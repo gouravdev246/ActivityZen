@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Pagination } from "@/components/ui/pagination";
 import { ChevronDown, Search, PlusCircle, ListX } from "lucide-react";
 import { type Task } from '@/lib/types';
-import { format, formatDistanceStrict } from 'date-fns';
+import { format, formatDistanceStrict, isValid } from 'date-fns';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import TaskForm from '@/components/activity-zen/task-form';
@@ -36,10 +36,13 @@ export default function ActivityLogPage() {
     try {
       const storedTasks = localStorage.getItem(STORAGE_KEY);
       if (storedTasks) {
-        const parsedTasks = JSON.parse(storedTasks, (key, value) => {
-            if ((key === 'startTime' || key === 'endTime' || key === 'createdAt') && value) return new Date(value);
-            return value;
-        });
+        const rawTasks = JSON.parse(storedTasks);
+        const parsedTasks: Task[] = Array.isArray(rawTasks) ? rawTasks.map((task: any) => ({
+          ...task,
+          startTime: new Date(task.startTime),
+          endTime: task.endTime ? new Date(task.endTime) : null,
+          createdAt: new Date(task.createdAt),
+        })) : [];
         setTasks(parsedTasks);
       }
     } catch (error) {
@@ -71,7 +74,11 @@ export default function ActivityLogPage() {
         const categoryMatch = categoryFilter === 'all' || task.category === categoryFilter;
         return searchMatch && categoryMatch;
       })
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      .sort((a, b) => {
+          const dateA = a.createdAt instanceof Date && isValid(a.createdAt) ? a.createdAt.getTime() : 0;
+          const dateB = b.createdAt instanceof Date && isValid(b.createdAt) ? b.createdAt.getTime() : 0;
+          return dateB - dateA;
+      });
   }, [tasks, searchTerm, categoryFilter]);
 
   const handleTaskSubmit = (taskData: Omit<Task, 'id' | 'createdAt'> | Task) => {
@@ -182,13 +189,15 @@ export default function ActivityLogPage() {
                       <TableCell className="font-medium">{task.title}</TableCell>
                       <TableCell className="text-muted-foreground">{task.category}</TableCell>
                       <TableCell className="text-muted-foreground">
-                        {format(task.startTime, 'MMM d, h:mm a')}
+                        {isValid(task.startTime) ? format(task.startTime, 'MMM d, h:mm a') : 'Invalid Date'}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {task.endTime ? format(task.endTime, 'MMM d, h:mm a') : 'In Progress'}
+                        {task.endTime && isValid(task.endTime) ? format(task.endTime, 'MMM d, h:mm a') : 'In Progress'}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {task.endTime ? formatDistanceStrict(task.endTime, task.startTime) : '-'}
+                        {task.endTime && isValid(task.endTime) && isValid(task.startTime)
+                          ? formatDistanceStrict(task.endTime, task.startTime) 
+                          : '-'}
                       </TableCell>
                       <TableCell className="text-right">
                         <Button variant="link" className="p-0 h-auto text-primary" onClick={() => handleEdit(task)}>Edit</Button>
