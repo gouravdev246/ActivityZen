@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { type Task, taskStatuses } from '@/lib/types';
 import { getCategorySuggestion } from '@/app/actions';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 
 const FormSchema = z.object({
@@ -39,13 +39,33 @@ export default function TaskForm({ onSubmit, taskToEdit, categories }: TaskFormP
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
     defaultValues: {
-      title: taskToEdit?.title || '',
-      description: taskToEdit?.description || '',
-      status: taskToEdit?.status || 'To Do',
-      category: taskToEdit?.category || '',
-      dueDate: taskToEdit?.dueDate || null,
+      title: '',
+      description: '',
+      status: 'To Do',
+      category: '',
+      dueDate: null,
     },
   });
+
+  useEffect(() => {
+    if (taskToEdit) {
+      form.reset({
+        title: taskToEdit.title,
+        description: taskToEdit.description || '',
+        status: taskToEdit.status,
+        category: taskToEdit.category,
+        dueDate: taskToEdit.dueDate,
+      });
+    } else {
+      form.reset({
+        title: '',
+        description: '',
+        status: 'To Do',
+        category: '',
+        dueDate: null,
+      });
+    }
+  }, [taskToEdit, form]);
 
   const handleFormSubmit = (data: z.infer<typeof FormSchema>) => {
     if (taskToEdit) {
@@ -149,7 +169,7 @@ export default function TaskForm({ onSubmit, taskToEdit, categories }: TaskFormP
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Select a status" />
-                    </SelectTrigger>
+                    </Trigger>
                   </FormControl>
                   <SelectContent>
                     {taskStatuses.map(status => (

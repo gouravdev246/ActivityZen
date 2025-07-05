@@ -13,10 +13,11 @@ export function DashboardHeader() {
   
   const navLinks = [
     { href: '/', label: 'Dashboard' },
+    { href: '/activity-zen', label: 'Activity Zen' },
     { href: '/activities', label: 'Activities' },
+    { href: '/calendar', label: 'Calendar' },
     { href: '/reports', label: 'Reports' },
     { href: '/settings', label: 'Settings' },
-    { href: '#', label: 'Community' },
   ];
 
   return (
