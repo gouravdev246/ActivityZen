@@ -3,11 +3,11 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Pagination } from "@/components/ui/pagination";
-import { Search, PlusCircle, ListX } from "lucide-react";
+import { Search, PlusCircle, ListX, MoreVertical, Edit, Trash2, Clock, Calendar as CalendarIcon } from "lucide-react";
 import { type Activity } from '@/lib/types';
 import { format, formatDistanceStrict, isValid, parseISO, isSameDay } from 'date-fns';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -15,6 +15,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import ActivityForm from '@/components/activity-zen/activity-form';
 import { useToast } from '@/hooks/use-toast';
 import { DatePicker } from '@/components/ui/date-picker';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 const STORAGE_KEY = 'activity-zen-activities';
 const ACTIVITIES_PER_PAGE = 15;
@@ -174,40 +175,87 @@ export default function ActivitiesPageClient() {
           </CardHeader>
           <CardContent className="p-0">
             {paginatedActivities.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Activity</TableHead>
-                    <TableHead>Start Time</TableHead>
-                    <TableHead>End Time</TableHead>
-                    <TableHead>Duration</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paginatedActivities.map((activity) => (
-                    <TableRow key={activity.id}>
-                      <TableCell className="font-medium">{activity.title}</TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {isValid(activity.startTime) ? format(activity.startTime, 'MMM d, h:mm a') : 'Invalid Date'}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {activity.endTime && isValid(activity.endTime) ? format(activity.endTime, 'MMM d, h:mm a') : 'In Progress'}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {activity.endTime && isValid(activity.endTime) && isValid(activity.startTime)
-                          ? formatDistanceStrict(activity.endTime, activity.startTime) 
-                          : '-'}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="link" className="p-0 h-auto text-primary" onClick={() => handleEdit(activity)}>Edit</Button>
-                        <span className="mx-1 text-muted-foreground">|</span>
-                        <Button variant="link" className="p-0 h-auto text-destructive" onClick={() => setActivityToDelete(activity.id)}>Delete</Button>
-                      </TableCell>
-                    </TableRow>
+              <>
+                <div className="hidden md:block">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Activity</TableHead>
+                        <TableHead>Start Time</TableHead>
+                        <TableHead>End Time</TableHead>
+                        <TableHead>Duration</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedActivities.map((activity) => (
+                        <TableRow key={activity.id}>
+                          <TableCell className="font-medium">{activity.title}</TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {isValid(activity.startTime) ? format(activity.startTime, 'MMM d, h:mm a') : 'Invalid Date'}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {activity.endTime && isValid(activity.endTime) ? format(activity.endTime, 'MMM d, h:mm a') : 'In Progress'}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {activity.endTime && isValid(activity.endTime) && isValid(activity.startTime)
+                              ? formatDistanceStrict(activity.endTime, activity.startTime) 
+                              : '-'}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button variant="link" className="p-0 h-auto text-primary" onClick={() => handleEdit(activity)}>Edit</Button>
+                            <span className="mx-1 text-muted-foreground">|</span>
+                            <Button variant="link" className="p-0 h-auto text-destructive" onClick={() => setActivityToDelete(activity.id)}>Delete</Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                <div className="md:hidden space-y-4 p-4">
+                  {paginatedActivities.map(activity => (
+                    <Card key={activity.id}>
+                       <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <CardTitle className="text-base font-semibold">{activity.title}</CardTitle>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleEdit(activity)}>
+                              <Edit className="mr-2 h-4 w-4" /> Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setActivityToDelete(activity.id)} className="text-destructive">
+                              <Trash2 className="mr-2 h-4 w-4" /> Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </CardHeader>
+                      <CardContent className="space-y-2 text-sm text-muted-foreground">
+                         <div className="flex items-center">
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            <span>{isValid(activity.startTime) ? format(activity.startTime, 'MMM d, yyyy') : 'No date'}</span>
+                        </div>
+                        <div className="flex items-center">
+                            <Clock className="mr-2 h-4 w-4" />
+                           <span>
+                            {isValid(activity.startTime) ? format(activity.startTime, 'h:mm a') : 'No time'} - {activity.endTime && isValid(activity.endTime) ? format(activity.endTime, 'h:mm a') : 'Now'}
+                           </span>
+                        </div>
+                      </CardContent>
+                      <CardFooter>
+                         <p className="text-sm text-muted-foreground">
+                          Duration: {activity.endTime && isValid(activity.endTime) && isValid(activity.startTime)
+                              ? formatDistanceStrict(activity.endTime, activity.startTime) 
+                              : '-'}
+                        </p>
+                      </CardFooter>
+                    </Card>
                   ))}
-                </TableBody>
-              </Table>
+                </div>
+              </>
             ) : (
                 <div className="flex flex-col items-center justify-center text-center py-20">
                     <ListX className="w-16 h-16 text-muted-foreground mb-4" />

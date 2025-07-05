@@ -130,7 +130,7 @@ export default function TaskManagerPageClient() {
             {taskStatuses.map(statusInfo => (
               <div key={statusInfo.value} className="bg-card rounded-lg shadow-sm">
                 <h2 className="text-lg font-semibold p-4 border-b">{statusInfo.label}</h2>
-                <div className="p-4 space-y-4 h-[calc(100vh-250px)] overflow-y-auto">
+                <div className="p-4 space-y-4 h-[60vh] md:h-[calc(100vh-250px)] overflow-y-auto">
                   {(tasksByStatus[statusInfo.value] || []).length > 0 ? (
                     tasksByStatus[statusInfo.value].map(task => (
                       <TaskCard 
