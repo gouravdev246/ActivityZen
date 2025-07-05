@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { type DateRange } from 'react-day-picker';
 import { subDays, format, eachDayOfInterval, isWithinInterval, differenceInMinutes, isValid, parseISO } from 'date-fns';
-import { type Activity, type Task, taskStatuses } from '@/lib/types';
+import { type Activity, type Task, taskStatuses, type ReportData } from '@/lib/types';
 
 import { ReportConfiguration } from "@/components/reports/report-configuration";
 import { StatCard } from "@/components/dashboard/stat-card";
@@ -15,17 +15,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 const ACTIVITY_STORAGE_KEY = 'activity-zen-activities';
 const TASK_STORAGE_KEY = 'task-manager-tasks';
-
-interface ReportData {
-    stats: {
-        totalActivities: number;
-        totalTasks: number;
-        totalTimeSpent: string;
-    };
-    trendsData: { date: string; activities: number; tasks: number }[];
-    timeAllocationData: { name: string; value: number }[];
-    taskStatusData: { name: string; value: number }[];
-}
 
 function formatDuration(minutes: number) {
     const hours = Math.floor(minutes / 60);
@@ -198,13 +187,13 @@ export default function ReportsPageClient() {
                         </div>
 
                         <div className="grid gap-8 lg:grid-cols-2">
-                             {showActivities && (
+                             {showActivities && reportData.timeAllocationData.length > 0 && (
                                 <div>
                                     <h2 className="text-2xl font-bold mb-4">Time Allocation</h2>
                                     <TimeAllocationChart data={reportData.timeAllocationData} />
                                 </div>
                             )}
-                            {showTasks && (
+                            {showTasks && reportData.taskStatusData.some(d => d.value > 0) &&(
                                 <div>
                                     <h2 className="text-2xl font-bold mb-4">Task Status</h2>
                                     <ActivityFrequencyChart data={reportData.taskStatusData} />
@@ -212,7 +201,7 @@ export default function ReportsPageClient() {
                             )}
                         </div>
                         
-                        <ReportExport />
+                        <ReportExport reportData={reportData} reportType={reportType} dateRange={date} />
                     </>
                 )}
             </div>

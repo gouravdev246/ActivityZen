@@ -42,3 +42,14 @@ export interface Task {
   dueDate?: Date | null;
   createdAt: Date;
 }
+
+export interface ReportData {
+    stats: {
+        totalActivities: number;
+        totalTasks: number;
+        totalTimeSpent: string;
+    };
+    trendsData: { date: string; activities: number; tasks: number }[];
+    timeAllocationData: { name: string; value: number }[];
+    taskStatusData: { name: string; value: number }[];
+}
