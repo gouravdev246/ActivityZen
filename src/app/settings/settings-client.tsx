@@ -16,6 +16,16 @@ import { useAuth } from '@/context/auth-provider';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 
 export default function ProfilePageClient() {
@@ -33,6 +43,7 @@ export default function ProfilePageClient() {
     daily: "",
     weekly: "",
   });
+  const [isLoadAlertOpen, setIsLoadAlertOpen] = useState(false);
 
   const userInitial = user?.displayName?.[0] || user?.email?.[0] || 'U';
   
@@ -49,7 +60,7 @@ export default function ProfilePageClient() {
 
         if (docSnap.exists()) {
           const settings = docSnap.data();
-          setAccountInfo(settings.accountInfo || { name: user.displayName || "", email: user.email || "" });
+          setAccountInfo({ name: user.displayName || "", email: user.email || "" });
           setTheme(settings.preferences?.theme || 'system');
           setNotifications(settings.preferences?.notifications || false);
           setGoals(settings.goals || { daily: "", weekly: "" });
@@ -90,7 +101,7 @@ export default function ProfilePageClient() {
     if (!user) return;
     try {
         const settingsDocRef = doc(db, 'settings', user.uid);
-        await setDoc(settingsDocRef, { accountInfo }, { merge: true });
+        await setDoc(settingsDocRef, { accountInfo: { name: accountInfo.name } }, { merge: true });
         toast({ title: "Account Updated", description: "Your account information has been saved." });
     } catch(e) {
         console.error("Error updating account:", e);
@@ -119,6 +130,55 @@ export default function ProfilePageClient() {
     } catch (e) {
         console.error("Error updating goals:", e);
         toast({ variant: 'destructive', title: "Error", description: "Failed to update goals." });
+    }
+  };
+
+  const handleSyncToCloud = async () => {
+    if (!user) return;
+    try {
+      const activitiesData = localStorage.getItem('activity-zen-activities');
+      const tasksData = localStorage.getItem('task-manager-tasks');
+      
+      const dataToSync = {
+        activities: activitiesData ? JSON.parse(activitiesData) : [],
+        tasks: tasksData ? JSON.parse(tasksData) : [],
+        syncedAt: new Date().toISOString(),
+      };
+
+      const dataDocRef = doc(db, 'userData', user.uid);
+      await setDoc(dataDocRef, dataToSync, { merge: true });
+
+      toast({ title: "Data Synced", description: "Your activity and task data has been saved to the cloud." });
+    } catch (e) {
+      console.error("Error syncing data:", e);
+      toast({ variant: 'destructive', title: "Error", description: "Failed to sync data." });
+    }
+  };
+
+  const handleLoadFromCloud = async () => {
+    if (!user) return;
+    try {
+      const dataDocRef = doc(db, 'userData', user.uid);
+      const docSnap = await getDoc(dataDocRef);
+
+      if (docSnap.exists()) {
+        const cloudData = docSnap.data();
+        if (cloudData.activities) {
+          localStorage.setItem('activity-zen-activities', JSON.stringify(cloudData.activities));
+        }
+        if (cloudData.tasks) {
+          localStorage.setItem('task-manager-tasks', JSON.stringify(cloudData.tasks));
+        }
+        toast({ title: "Data Loaded", description: "Your data has been loaded from the cloud. The page will now reload." });
+        setTimeout(() => window.location.reload(), 2000);
+      } else {
+        toast({ title: "No Cloud Data", description: "No data found in the cloud for your account." });
+      }
+    } catch (e) {
+      console.error("Error loading data:", e);
+      toast({ variant: 'destructive', title: "Error", description: "Failed to load data from the cloud." });
+    } finally {
+      setIsLoadAlertOpen(false);
     }
   };
 
@@ -191,7 +251,6 @@ export default function ProfilePageClient() {
                 id="email" 
                 type="email" 
                 value={accountInfo.email}
-                onChange={(e) => setAccountInfo({...accountInfo, email: e.target.value})}
                 disabled
               />
             </div>
@@ -275,6 +334,22 @@ export default function ProfilePageClient() {
 
         <Card>
           <CardHeader>
+            <CardTitle className="text-xl font-semibold">Data Management</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <p className="text-sm text-muted-foreground mb-2">Save your local activity and task data to the cloud to access it from other devices.</p>
+              <Button onClick={handleSyncToCloud}>Sync Data to Cloud</Button>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground mb-2">Load your data from the cloud. This will overwrite any unsynced local data.</p>
+              <Button variant="outline" onClick={() => setIsLoadAlertOpen(true)}>Load Data from Cloud</Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
             <CardTitle className="text-xl font-semibold">Help & Support</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
@@ -291,6 +366,20 @@ export default function ProfilePageClient() {
         </Card>
       </div>
     </main>
+    <AlertDialog open={isLoadAlertOpen} onOpenChange={setIsLoadAlertOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Loading data from the cloud will overwrite your current local data. This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={handleLoadFromCloud}>Yes, load data</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
     </>
   );
 }
