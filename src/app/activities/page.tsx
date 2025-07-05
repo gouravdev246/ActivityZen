@@ -9,12 +9,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Pagination } from "@/components/ui/pagination";
 import { Search, PlusCircle, ListX } from "lucide-react";
 import { type Activity } from '@/lib/types';
-import { format, formatDistanceStrict, isValid, parseISO } from 'date-fns';
+import { format, formatDistanceStrict, isValid, parseISO, isSameDay } from 'date-fns';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import ActivityForm from '@/components/activity-zen/activity-form';
 import { useToast } from '@/hooks/use-toast';
 import { Toaster } from '@/components/ui/toaster';
+import { DatePicker } from '@/components/ui/date-picker';
 
 const STORAGE_KEY = 'activity-zen-activities';
 const ACTIVITIES_PER_PAGE = 15;
@@ -28,6 +29,7 @@ export default function ActivityLogPage() {
   const [activityToDelete, setActivityToDelete] = useState<string | null>(null);
   
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterDate, setFilterDate] = useState<Date>();
   const [currentPage, setCurrentPage] = useState(1);
 
   const { toast } = useToast();
@@ -64,17 +66,23 @@ export default function ActivityLogPage() {
   const filteredActivities = useMemo(() => {
     return activities
       .filter(activity => {
-        return searchTerm.length > 0 
+        const searchTermMatch = searchTerm.length > 0 
           ? activity.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (activity.description && activity.description.toLowerCase().includes(searchTerm.toLowerCase()))
           : true;
+        
+        const dateMatch = filterDate
+          ? isValid(activity.startTime) && isSameDay(activity.startTime, filterDate)
+          : true;
+
+        return searchTermMatch && dateMatch;
       })
       .sort((a, b) => {
           const dateA = a.createdAt instanceof Date && isValid(a.createdAt) ? a.createdAt.getTime() : 0;
           const dateB = b.createdAt instanceof Date && isValid(b.createdAt) ? b.createdAt.getTime() : 0;
           return dateB - dateA;
       });
-  }, [activities, searchTerm]);
+  }, [activities, searchTerm, filterDate]);
 
   const totalPages = Math.ceil(filteredActivities.length / ACTIVITIES_PER_PAGE);
 
@@ -117,6 +125,11 @@ export default function ActivityLogPage() {
       setCurrentPage(totalPages || 1);
     }
   }, [filteredActivities, currentPage, totalPages]);
+
+  const handleDateChange = (date: Date | undefined) => {
+    setFilterDate(date);
+    setCurrentPage(1);
+  }
   
   if (isLoading) {
     return (
@@ -161,6 +174,8 @@ export default function ActivityLogPage() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input placeholder="Search activities..." className="pl-10" value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }} />
               </div>
+              <DatePicker date={filterDate} setDate={handleDateChange} />
+              {filterDate && <Button variant="ghost" size="sm" onClick={() => handleDateChange(undefined)}>Clear</Button>}
             </div>
           </CardHeader>
           <CardContent className="p-0">
@@ -203,7 +218,7 @@ export default function ActivityLogPage() {
                 <div className="flex flex-col items-center justify-center text-center py-20">
                     <ListX className="w-16 h-16 text-muted-foreground mb-4" />
                     <h2 className="text-2xl font-semibold mb-2">No Activities Found</h2>
-                    <p className="text-muted-foreground">{searchTerm ? `No activities found for "${searchTerm}".` : "Your activity log is empty. Start by logging a new activity."}</p>
+                    <p className="text-muted-foreground">{searchTerm || filterDate ? `No activities found for your filters.` : "Your activity log is empty. Start by logging a new activity."}</p>
                 </div>
             )}
           </CardContent>
