@@ -1,16 +1,32 @@
+
 'use client';
 
-import { Bell } from 'lucide-react';
+import { Bell, LogOut } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import Logo from '@/components/logo';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/context/auth-provider';
+import { auth } from '@/lib/firebase';
+import { signOut } from 'firebase/auth';
 
 export function DashboardHeader() {
   const pathname = usePathname();
-  
+  const router = useRouter();
+  const { user } = useAuth();
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      router.push('/login');
+    } catch (error) {
+      console.error("Error signing out: ", error);
+    }
+  };
+
   const navLinks = [
     { href: '/', label: 'Dashboard' },
     { href: '/tasks', label: 'Task Manager' },
@@ -19,6 +35,8 @@ export function DashboardHeader() {
     { href: '/reports', label: 'Reports' },
     { href: '/settings', label: 'Profile' },
   ];
+  
+  const userInitial = user?.displayName?.[0] || user?.email?.[0] || 'U';
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-card">
@@ -46,10 +64,24 @@ export function DashboardHeader() {
             <Bell className="h-5 w-5" />
             <span className="sr-only">Notifications</span>
           </Button>
-          <Avatar className="h-9 w-9">
-            <AvatarImage src="https://i.pravatar.cc/32" alt="User avatar" data-ai-hint="person" />
-            <AvatarFallback>U</AvatarFallback>
-          </Avatar>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Avatar className="h-9 w-9 cursor-pointer">
+                  <AvatarImage src={user?.photoURL ?? undefined} alt={user?.displayName ?? "User avatar"} data-ai-hint="person" />
+                  <AvatarFallback>{userInitial.toUpperCase()}</AvatarFallback>
+                </Avatar>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>My Account</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => router.push('/settings')}>Profile</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive">
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Log out</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </header>

@@ -10,7 +10,6 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import ActivityForm from '@/components/activity-zen/activity-form';
 import { type Activity } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { Toaster } from '@/components/ui/toaster';
 import { format, formatDistanceStrict, isValid, isSameDay, parseISO } from 'date-fns';
 import { PlusCircle, Edit, Trash2, ListX } from 'lucide-react';
 
@@ -200,7 +199,6 @@ export default function CalendarPageClient() {
         </div>
       </div>
     </main>
-    <Toaster />
     <AlertDialog open={!!activityToDelete} onOpenChange={() => setActivityToDelete(null)}>
       <AlertDialogContent>
         <AlertDialogHeader>

@@ -1,5 +1,8 @@
+
 import type {Metadata} from 'next';
 import './globals.css';
+import { AuthProvider } from '@/context/auth-provider';
+import { Toaster } from '@/components/ui/toaster';
 
 export const metadata: Metadata = {
   title: 'Activity Tracker',
@@ -19,7 +22,10 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
       </head>
       <body className="font-sans antialiased">
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
+        <Toaster />
       </body>
     </html>
   );

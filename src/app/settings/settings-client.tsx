@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -10,7 +11,6 @@ import { Switch } from "@/components/ui/switch";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
-import { Toaster } from "@/components/ui/toaster";
 import { Skeleton } from '@/components/ui/skeleton';
 
 const ACCOUNT_KEY = 'profile-settings-account';
@@ -244,7 +244,6 @@ export default function ProfilePageClient() {
         </Card>
       </div>
     </main>
-    <Toaster />
     </>
   );
 }
