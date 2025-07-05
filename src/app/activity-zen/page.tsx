@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -32,7 +33,9 @@ export default function ActivityZenPage() {
       const storedTasks = localStorage.getItem(STORAGE_KEY);
       if (storedTasks) {
         const parsedTasks = JSON.parse(storedTasks, (key, value) => {
-            if ((key === 'startTime' || key === 'endTime' || key === 'createdAt') && value) return new Date(value);
+            if ((key === 'startTime' || key === 'endTime' || key === 'createdAt') && value) {
+              return new Date(value);
+            }
             return value;
         });
         setTasks(parsedTasks);
@@ -63,17 +66,23 @@ export default function ActivityZenPage() {
     }
     
     return [...filtered].sort((a, b) => {
+        // Defensively create Date objects to prevent errors from invalid data
+        const dateA = a.startTime instanceof Date ? a.startTime : new Date(a.startTime);
+        const dateB = b.startTime instanceof Date ? b.startTime : new Date(b.startTime);
+        const createdA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
+        const createdB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
+
         switch (sortOption) {
             case 'startTime_asc':
-                return new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
+                return dateA.getTime() - dateB.getTime();
             case 'startTime_desc':
-                return new Date(b.startTime).getTime() - new Date(a.startTime).getTime();
+                return dateB.getTime() - dateA.getTime();
             case 'title_asc':
                 return a.title.localeCompare(b.title);
             case 'title_desc':
                 return b.title.localeCompare(a.title);
             default:
-                 return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+                 return createdB.getTime() - createdA.getTime();
         }
     });
 
