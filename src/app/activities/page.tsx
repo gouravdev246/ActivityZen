@@ -9,14 +9,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Pagination } from "@/components/ui/pagination";
 import { Search, PlusCircle, ListX } from "lucide-react";
 import { type Activity } from '@/lib/types';
-import { format, formatDistanceStrict, isValid } from 'date-fns';
+import { format, formatDistanceStrict, isValid, parseISO } from 'date-fns';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import TaskForm from '@/components/activity-zen/task-form';
+import ActivityForm from '@/components/activity-zen/activity-form';
 import { useToast } from '@/hooks/use-toast';
 import { Toaster } from '@/components/ui/toaster';
 
 const STORAGE_KEY = 'activity-zen-activities';
+const ACTIVITIES_PER_PAGE = 15;
 
 export default function ActivityLogPage() {
   const [activities, setActivities] = useState<Activity[]>([]);
@@ -27,6 +28,7 @@ export default function ActivityLogPage() {
   const [activityToDelete, setActivityToDelete] = useState<string | null>(null);
   
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
 
   const { toast } = useToast();
 
@@ -34,13 +36,12 @@ export default function ActivityLogPage() {
     try {
       const storedActivities = localStorage.getItem(STORAGE_KEY);
       if (storedActivities) {
-        const parsedActivities = JSON.parse(storedActivities, (key, value) => {
-            if ((key === 'startTime' || key === 'endTime' || key === 'createdAt') && value) {
-              const date = new Date(value);
-              return isValid(date) ? date : null;
-            }
-            return value;
-        });
+        const parsedActivities: Activity[] = JSON.parse(storedActivities).map((activity: any) => ({
+          ...activity,
+          startTime: activity.startTime ? parseISO(activity.startTime) : new Date(),
+          endTime: activity.endTime ? parseISO(activity.endTime) : null,
+          createdAt: activity.createdAt ? parseISO(activity.createdAt) : new Date(),
+        }));
         setActivities(Array.isArray(parsedActivities) ? parsedActivities : []);
       }
     } catch (error) {
@@ -65,7 +66,7 @@ export default function ActivityLogPage() {
       .filter(activity => {
         return searchTerm.length > 0 
           ? activity.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            activity.description?.toLowerCase().includes(searchTerm.toLowerCase())
+            (activity.description && activity.description.toLowerCase().includes(searchTerm.toLowerCase()))
           : true;
       })
       .sort((a, b) => {
@@ -75,13 +76,20 @@ export default function ActivityLogPage() {
       });
   }, [activities, searchTerm]);
 
+  const totalPages = Math.ceil(filteredActivities.length / ACTIVITIES_PER_PAGE);
+
+  const paginatedActivities = useMemo(() => {
+    const startIndex = (currentPage - 1) * ACTIVITIES_PER_PAGE;
+    return filteredActivities.slice(startIndex, startIndex + ACTIVITIES_PER_PAGE);
+  }, [filteredActivities, currentPage]);
+
   const handleActivitySubmit = (activityData: Omit<Activity, 'id' | 'createdAt'> | Activity) => {
     if ('id' in activityData && activityData.id) {
       setActivities(activities.map(t => (t.id === activityData.id ? activityData as Activity : t)));
       toast({ title: 'Activity Updated!', description: `"${activityData.title}" has been updated.` });
     } else {
       const newActivity: Activity = { ...(activityData as Omit<Activity, 'id' | 'createdAt'>), id: crypto.randomUUID(), createdAt: new Date() };
-      setActivities([...activities, newActivity]);
+      setActivities([newActivity, ...activities]);
       toast({ title: 'Activity Logged!', description: `"${newActivity.title}" has been logged.` });
     }
     setIsDialogOpen(false);
@@ -103,6 +111,12 @@ export default function ActivityLogPage() {
       }
     }
   };
+
+  useEffect(() => {
+    if (filteredActivities.length > 0 && currentPage > totalPages) {
+      setCurrentPage(totalPages || 1);
+    }
+  }, [filteredActivities, currentPage, totalPages]);
   
   if (isLoading) {
     return (
@@ -133,7 +147,7 @@ export default function ActivityLogPage() {
                   <DialogHeader>
                       <DialogTitle>{activityToEdit ? 'Edit Activity' : 'Log a new activity'}</DialogTitle>
                   </DialogHeader>
-                  <TaskForm 
+                  <ActivityForm 
                       onSubmit={handleActivitySubmit} 
                       activityToEdit={activityToEdit} 
                   />
@@ -145,12 +159,12 @@ export default function ActivityLogPage() {
             <div className="flex items-center gap-4 flex-wrap">
               <div className="relative w-full sm:w-auto sm:flex-grow max-w-sm">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search activities..." className="pl-10" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                <Input placeholder="Search activities..." className="pl-10" value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }} />
               </div>
             </div>
           </CardHeader>
           <CardContent className="p-0">
-            {filteredActivities.length > 0 ? (
+            {paginatedActivities.length > 0 ? (
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -162,7 +176,7 @@ export default function ActivityLogPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredActivities.map((activity) => (
+                  {paginatedActivities.map((activity) => (
                     <TableRow key={activity.id}>
                       <TableCell className="font-medium">{activity.title}</TableCell>
                       <TableCell className="text-muted-foreground">
@@ -189,13 +203,17 @@ export default function ActivityLogPage() {
                 <div className="flex flex-col items-center justify-center text-center py-20">
                     <ListX className="w-16 h-16 text-muted-foreground mb-4" />
                     <h2 className="text-2xl font-semibold mb-2">No Activities Found</h2>
-                    <p className="text-muted-foreground">Your activity log is empty. Start by logging a new activity.</p>
+                    <p className="text-muted-foreground">{searchTerm ? `No activities found for "${searchTerm}".` : "Your activity log is empty. Start by logging a new activity."}</p>
                 </div>
             )}
           </CardContent>
-          {filteredActivities.length > 0 && (
+          {totalPages > 1 && (
             <CardFooter>
-              <Pagination />
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
             </CardFooter>
           )}
         </Card>
