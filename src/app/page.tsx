@@ -10,7 +10,15 @@ import { KeyMetricCard } from "@/components/dashboard/key-metric-card";
 import { CustomizePanel } from "@/components/dashboard/customize-panel";
 import { type Task } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
-import { subDays, eachDayOfInterval, format, startOfWeek, endOfWeek, subWeeks, isWithinInterval } from 'date-fns';
+import { subDays, eachDayOfInterval, format, startOfWeek, endOfWeek, subWeeks, isWithinInterval, differenceInMinutes } from 'date-fns';
+
+function formatDuration(minutes: number) {
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    if (hours > 0 && remainingMinutes > 0) return `${hours}h ${remainingMinutes}m`;
+    if (hours > 0) return `${hours}h`;
+    return `${remainingMinutes}m`;
+}
 
 export default function DashboardPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -21,7 +29,7 @@ export default function DashboardPage() {
       const storedTasks = localStorage.getItem('activity-zen-tasks');
       if (storedTasks) {
         const parsedTasks = JSON.parse(storedTasks, (key, value) => {
-            if ((key === 'dueDate' || key === 'createdAt') && value) {
+            if ((key === 'startTime' || key === 'endTime' || key === 'createdAt') && value) {
               return new Date(value);
             }
             return value;
@@ -37,9 +45,15 @@ export default function DashboardPage() {
 
   const stats = useMemo(() => {
     const totalActivities = tasks.length;
-    const doneTasks = tasks.filter(task => task.status === 'Done');
-    const goalProgress = totalActivities > 0 ? Math.round((doneTasks.length / totalActivities) * 100) : 0;
+    const completedTasks = tasks.filter(task => task.endTime);
     
+    const totalTimeSpent = completedTasks.reduce((acc, task) => {
+        if (task.endTime) {
+            return acc + differenceInMinutes(task.endTime, task.startTime);
+        }
+        return acc;
+    }, 0);
+
     const categoryCounts = tasks.reduce((acc, task) => {
         if(task.category) {
             acc[task.category] = (acc[task.category] || 0) + 1;
@@ -50,30 +64,34 @@ export default function DashboardPage() {
     const mostFrequentCategory = Object.keys(categoryCounts).length > 0 
         ? Object.entries(categoryCounts).sort((a, b) => b[1] - a[1])[0][0] 
         : 'N/A';
+        
+    const averageTimePerActivity = completedTasks.length > 0 
+        ? formatDuration(Math.round(totalTimeSpent / completedTasks.length))
+        : 'N/A';
 
     return {
         totalActivities: totalActivities.toString(),
-        timeSpent: "N/A", 
-        goalProgress: `${goalProgress}%`,
+        timeSpent: totalTimeSpent > 0 ? formatDuration(totalTimeSpent) : "N/A", 
+        goalProgress: "N/A",
         mostFrequentCategory,
-        averageTimePerActivity: "N/A"
+        averageTimePerActivity
     };
   }, [tasks]);
 
   const dailyChartData = useMemo(() => {
     const today = new Date();
     const last7Days = eachDayOfInterval({ start: subDays(today, 6), end: today });
-    const completedTasks = tasks.filter(t => t.status === 'Done' && t.dueDate);
+    const completedTasks = tasks.filter(t => t.endTime);
 
     return last7Days.map(day => {
-        const count = completedTasks.filter(t => format(t.dueDate!, 'yyyy-MM-dd') === format(day, 'yyyy-MM-dd')).length;
+        const count = completedTasks.filter(t => t.endTime && format(t.endTime, 'yyyy-MM-dd') === format(day, 'yyyy-MM-dd')).length;
         return { name: format(day, 'E'), value: count };
     });
   }, [tasks]);
 
   const weeklyChartData = useMemo(() => {
     const today = new Date();
-    const completedTasks = tasks.filter(t => t.status === 'Done' && t.dueDate);
+    const completedTasks = tasks.filter(t => t.endTime);
     
     const weeks = [
         { name: 'Week 1', interval: { start: startOfWeek(subWeeks(today, 3)), end: endOfWeek(subWeeks(today, 3)) } },
@@ -83,7 +101,7 @@ export default function DashboardPage() {
     ];
 
     return weeks.map(week => {
-        const count = completedTasks.filter(t => t.dueDate && isWithinInterval(t.dueDate, week.interval)).length;
+        const count = completedTasks.filter(t => t.endTime && isWithinInterval(t.endTime, week.interval)).length;
         return { name: week.name, value: count };
     });
   }, [tasks]);
@@ -133,7 +151,7 @@ export default function DashboardPage() {
         </div>
         
         <div className="grid gap-6 mb-8 md:grid-cols-3">
-          <StatCard title="Total Tasks" value={stats.totalActivities} />
+          <StatCard title="Total Activities" value={stats.totalActivities} />
           <StatCard title="Time Spent" value={stats.timeSpent} />
           <StatCard title="Goal Progress" value={stats.goalProgress} />
         </div>

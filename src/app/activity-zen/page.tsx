@@ -9,7 +9,7 @@ import TaskCard from '@/components/activity-zen/task-card';
 import TaskForm from '@/components/activity-zen/task-form';
 import TaskFilters from '@/components/activity-zen/task-filters';
 import { DashboardHeader } from '@/components/dashboard/header';
-import { type Task, type TaskStatus, type SortOption } from '@/lib/types';
+import { type Task, type SortOption } from '@/lib/types';
 import { Toaster } from '@/components/ui/toaster';
 import { useToast } from '@/hooks/use-toast';
 
@@ -22,9 +22,8 @@ export default function ActivityZenPage() {
   const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
   const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
 
-  const [statusFilter, setStatusFilter] = useState<TaskStatus | 'all'>('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
-  const [sortOption, setSortOption] = useState<SortOption>('dueDate_asc');
+  const [sortOption, setSortOption] = useState<SortOption>('startTime_desc');
 
   const { toast } = useToast();
   
@@ -33,7 +32,7 @@ export default function ActivityZenPage() {
       const storedTasks = localStorage.getItem(STORAGE_KEY);
       if (storedTasks) {
         const parsedTasks = JSON.parse(storedTasks, (key, value) => {
-            if ((key === 'dueDate' || key === 'createdAt') && value) return new Date(value);
+            if ((key === 'startTime' || key === 'endTime' || key === 'createdAt') && value) return new Date(value);
             return value;
         });
         setTasks(parsedTasks);
@@ -59,46 +58,35 @@ export default function ActivityZenPage() {
 
   const filteredAndSortedTasks = useMemo(() => {
     let filtered = tasks;
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(task => task.status === statusFilter);
-    }
     if (categoryFilter !== 'all') {
       filtered = filtered.filter(task => task.category === categoryFilter);
     }
     
     return [...filtered].sort((a, b) => {
         switch (sortOption) {
-            case 'dueDate_asc':
-                if (!a.dueDate) return 1;
-                if (!b.dueDate) return -1;
-                return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
-            case 'dueDate_desc':
-                if (!a.dueDate) return 1;
-                if (!b.dueDate) return -1;
-                return new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime();
+            case 'startTime_asc':
+                return new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
+            case 'startTime_desc':
+                return new Date(b.startTime).getTime() - new Date(a.startTime).getTime();
             case 'title_asc':
                 return a.title.localeCompare(b.title);
             case 'title_desc':
                 return b.title.localeCompare(a.title);
-            case 'status':
-                return a.status.localeCompare(b.status);
             default:
-                if (!a.createdAt) return 1;
-                if (!b.createdAt) return -1;
-                return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+                 return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         }
     });
 
-  }, [tasks, statusFilter, categoryFilter, sortOption]);
+  }, [tasks, categoryFilter, sortOption]);
 
   const handleTaskSubmit = (taskData: Omit<Task, 'id' | 'createdAt'> | Task) => {
     if ('id' in taskData && taskData.id) {
       setTasks(tasks.map(t => (t.id === taskData.id ? taskData as Task : t)));
-      toast({ title: 'Task Updated!', description: `"${taskData.title}" has been updated.` });
+      toast({ title: 'Activity Updated!', description: `"${taskData.title}" has been updated.` });
     } else {
-      const newTask: Task = { ...taskData, id: crypto.randomUUID(), createdAt: new Date() };
+      const newTask: Task = { ...(taskData as Omit<Task, 'id' | 'createdAt'>), id: crypto.randomUUID(), createdAt: new Date() };
       setTasks([...tasks, newTask]);
-      toast({ title: 'Task Created!', description: `"${newTask.title}" has been added.` });
+      toast({ title: 'Activity Logged!', description: `"${newTask.title}" has been logged.` });
     }
     setIsDialogOpen(false);
     setTaskToEdit(null);
@@ -115,14 +103,9 @@ export default function ActivityZenPage() {
       setTasks(tasks.filter(t => t.id !== taskToDelete));
       setTaskToDelete(null);
       if (task) {
-        toast({ title: 'Task Deleted', description: `"${task.title}" has been deleted.`, variant: 'destructive' });
+        toast({ title: 'Activity Deleted', description: `"${task.title}" has been deleted.` });
       }
     }
-  };
-
-  const handleUpdateStatus = (updatedTask: Task) => {
-    setTasks(tasks.map(t => t.id === updatedTask.id ? updatedTask : t));
-    toast({ title: 'Status Updated!', description: `"${updatedTask.title}" is now "${updatedTask.status}".` });
   };
   
   if (isLoading) {
@@ -130,7 +113,7 @@ export default function ActivityZenPage() {
         <div className="flex flex-col min-h-screen w-full bg-muted/40">
             <DashboardHeader />
             <main className="flex-1 container mx-auto p-4 sm:p-6 md:p-8 flex items-center justify-center">
-                <p>Loading tasks...</p>
+                <p>Loading activities...</p>
             </main>
         </div>
     );
@@ -144,18 +127,18 @@ export default function ActivityZenPage() {
             <div className="flex items-center justify-between mb-6">
                 <div className="flex flex-col">
                     <h1 className="text-3xl font-bold">Activity Zen</h1>
-                    <p className="text-muted-foreground">Focus and manage your tasks with ease.</p>
+                    <p className="text-muted-foreground">Focus and manage your activities with ease.</p>
                 </div>
                  <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) setTaskToEdit(null); }}>
                     <DialogTrigger asChild>
                       <Button onClick={() => { setTaskToEdit(null); setIsDialogOpen(true); }}>
                         <PlusCircle className="mr-2" />
-                        Add Task
+                        Log Activity
                       </Button>
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-xl">
                         <DialogHeader>
-                            <DialogTitle>{taskToEdit ? 'Edit Task' : 'Create a new task'}</DialogTitle>
+                            <DialogTitle>{taskToEdit ? 'Edit Activity' : 'Log a new activity'}</DialogTitle>
                         </DialogHeader>
                         <TaskForm 
                             onSubmit={handleTaskSubmit} 
@@ -167,8 +150,6 @@ export default function ActivityZenPage() {
             </div>
 
             <TaskFilters
-              statusFilter={statusFilter}
-              setStatusFilter={setStatusFilter}
               categoryFilter={categoryFilter}
               setCategoryFilter={setCategoryFilter}
               categories={categories}
@@ -184,25 +165,24 @@ export default function ActivityZenPage() {
                             task={task} 
                             onEdit={handleEdit} 
                             onDelete={(id) => setTaskToDelete(id)}
-                            onUpdateStatus={handleUpdateStatus}
                         />
                     ))}
                 </div>
             ) : (
                 <div className="flex flex-col items-center justify-center text-center py-20 rounded-lg border-2 border-dashed bg-card">
                     <ListX className="w-16 h-16 text-muted-foreground mb-4" />
-                    <h2 className="text-2xl font-semibold mb-2">No Tasks Found</h2>
-                    <p className="text-muted-foreground mb-4">It looks like there are no tasks here. <br /> Get started by adding a new one!</p>
+                    <h2 className="text-2xl font-semibold mb-2">No Activities Found</h2>
+                    <p className="text-muted-foreground mb-4">It looks like there are no activities here. <br /> Get started by logging a new one!</p>
                      <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) setTaskToEdit(null); }}>
                         <DialogTrigger asChild>
                            <Button onClick={() => { setTaskToEdit(null); setIsDialogOpen(true); }}>
                                 <PlusCircle className="mr-2" />
-                                Add Your First Task
+                                Log Your First Activity
                             </Button>
                         </DialogTrigger>
                         <DialogContent className="sm:max-w-xl">
                            <DialogHeader>
-                                <DialogTitle>{taskToEdit ? 'Edit Task' : 'Create a new task'}</DialogTitle>
+                                <DialogTitle>{taskToEdit ? 'Edit Activity' : 'Log a new activity'}</DialogTitle>
                             </DialogHeader>
                             <TaskForm 
                                 onSubmit={handleTaskSubmit} 
@@ -221,7 +201,7 @@ export default function ActivityZenPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the task
+              This action cannot be undone. This will permanently delete the activity
               "{tasks.find(t => t.id === taskToDelete)?.title}".
             </AlertDialogDescription>
           </AlertDialogHeader>

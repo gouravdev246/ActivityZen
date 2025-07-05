@@ -11,9 +11,9 @@ interface CalendarViewProps {
 export function CalendarView({ tasks }: CalendarViewProps) {
   const [date, setDate] = useState<Date | undefined>(new Date());
 
-  const taskDueDates = useMemo(() => {
+  const taskStartDates = useMemo(() => {
     return tasks
-      .map(task => task.dueDate)
+      .map(task => task.startTime)
       .filter((d): d is Date => d !== null);
   }, [tasks]);
 
@@ -28,7 +28,7 @@ export function CalendarView({ tasks }: CalendarViewProps) {
           selected={date}
           onSelect={setDate}
           className="p-0"
-          modifiers={{ due: taskDueDates }}
+          modifiers={{ due: taskStartDates }}
           modifiersStyles={{
             due: { 
               border: "1px solid hsl(var(--primary))",

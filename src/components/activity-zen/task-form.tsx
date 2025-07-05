@@ -8,29 +8,43 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, Sparkles, Loader2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
-import { type Task, taskStatuses } from '@/lib/types';
+import { Sparkles, Loader2 } from 'lucide-react';
+import { type Task } from '@/lib/types';
 import { getCategorySuggestion } from '@/app/actions';
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
 
 const FormSchema = z.object({
   title: z.string().min(2, { message: 'Title must be at least 2 characters.' }),
   description: z.string().optional(),
-  status: z.enum(taskStatuses),
   category: z.string().min(1, { message: 'Please select a category.' }),
-  dueDate: z.date().nullable(),
+  startTime: z.string().refine((val) => val, { message: 'Start time is required.' }),
+  endTime: z.string().optional(),
+}).refine(data => {
+    if (data.startTime && data.endTime) {
+        return new Date(data.endTime) > new Date(data.startTime);
+    }
+    return true;
+}, {
+    message: "End time must be after start time.",
+    path: ["endTime"],
 });
 
 type TaskFormProps = {
-  onSubmit: (data: Omit<Task, 'id'> | Task) => void;
+  onSubmit: (data: Omit<Task, 'id' | 'createdAt'>) => void;
   taskToEdit?: Task | null;
   categories: string[];
 };
+
+const toDateTimeLocal = (date: Date | null | undefined) => {
+  if (!date) return '';
+  // Adjust for timezone offset
+  const tzOffset = date.getTimezoneOffset() * 60000;
+  const localDate = new Date(date.getTime() - tzOffset);
+  return localDate.toISOString().slice(0, 16);
+};
+
 
 export default function TaskForm({ onSubmit, taskToEdit, categories }: TaskFormProps) {
   const [isSuggesting, setIsSuggesting] = useState(false);
@@ -41,9 +55,9 @@ export default function TaskForm({ onSubmit, taskToEdit, categories }: TaskFormP
     defaultValues: {
       title: '',
       description: '',
-      status: 'To Do',
       category: '',
-      dueDate: null,
+      startTime: '',
+      endTime: '',
     },
   });
 
@@ -52,26 +66,32 @@ export default function TaskForm({ onSubmit, taskToEdit, categories }: TaskFormP
       form.reset({
         title: taskToEdit.title,
         description: taskToEdit.description || '',
-        status: taskToEdit.status,
         category: taskToEdit.category,
-        dueDate: taskToEdit.dueDate,
+        startTime: toDateTimeLocal(taskToEdit.startTime),
+        endTime: toDateTimeLocal(taskToEdit.endTime),
       });
     } else {
       form.reset({
         title: '',
         description: '',
-        status: 'To Do',
         category: '',
-        dueDate: null,
+        startTime: toDateTimeLocal(new Date()),
+        endTime: '',
       });
     }
   }, [taskToEdit, form]);
 
   const handleFormSubmit = (data: z.infer<typeof FormSchema>) => {
+    const finalData = {
+        ...data,
+        startTime: new Date(data.startTime),
+        endTime: data.endTime ? new Date(data.endTime) : null,
+    };
+    
     if (taskToEdit) {
-      onSubmit({ ...taskToEdit, ...data });
+      onSubmit({ ...taskToEdit, ...finalData });
     } else {
-      onSubmit(data);
+      onSubmit(finalData);
     }
     form.reset();
   };
@@ -109,9 +129,9 @@ export default function TaskForm({ onSubmit, taskToEdit, categories }: TaskFormP
           name="title"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Title</FormLabel>
+              <FormLabel>Activity</FormLabel>
               <FormControl>
-                <Input placeholder="e.g. Finalize Q3 report" {...field} />
+                <Input placeholder="e.g. Morning Walk" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -122,23 +142,22 @@ export default function TaskForm({ onSubmit, taskToEdit, categories }: TaskFormP
           name="description"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Description (Optional)</FormLabel>
+              <FormLabel>Notes (Optional)</FormLabel>
               <FormControl>
-                <Textarea placeholder="Add more details about the task..." {...field} />
+                <Textarea placeholder="Add more details about the activity..." {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <FormField
+         <FormField
             control={form.control}
             name="category"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Category</FormLabel>
                 <div className="flex gap-2">
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select a category" />
@@ -159,66 +178,36 @@ export default function TaskForm({ onSubmit, taskToEdit, categories }: TaskFormP
               </FormItem>
             )}
           />
-           <FormField
-            control={form.control}
-            name="status"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Status</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <FormField
+              control={form.control}
+              name="startTime"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Start Time</FormLabel>
                   <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a status" />
-                    </SelectTrigger>
+                    <Input type="datetime-local" {...field} />
                   </FormControl>
-                  <SelectContent>
-                    {taskStatuses.map(status => (
-                      <SelectItem key={status} value={status}>{status}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="endTime"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>End Time (Optional)</FormLabel>
+                  <FormControl>
+                    <Input type="datetime-local" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
         </div>
-        <FormField
-          control={form.control}
-          name="dueDate"
-          render={({ field }) => (
-            <FormItem className="flex flex-col">
-              <FormLabel>Due Date (Optional)</FormLabel>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <FormControl>
-                    <Button
-                      variant={'outline'}
-                      className={cn(
-                        'w-full pl-3 text-left font-normal',
-                        !field.value && 'text-muted-foreground'
-                      )}
-                    >
-                      {field.value ? format(field.value, 'PPP') : <span>Pick a date</span>}
-                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                    </Button>
-                  </FormControl>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={field.value || undefined}
-                    onSelect={field.onChange}
-                    disabled={(date) => date < new Date(new Date().setDate(new Date().getDate() - 1))}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
         <Button type="submit" className="w-full">
-          {taskToEdit ? 'Save Changes' : 'Create Task'}
+          {taskToEdit ? 'Save Changes' : 'Log Activity'}
         </Button>
       </form>
     </Form>

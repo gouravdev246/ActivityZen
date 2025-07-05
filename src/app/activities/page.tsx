@@ -9,8 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Pagination } from "@/components/ui/pagination";
 import { ChevronDown, Search, PlusCircle, ListX } from "lucide-react";
-import { type Task, type TaskStatus } from '@/lib/types';
-import { format } from 'date-fns';
+import { type Task } from '@/lib/types';
+import { format, formatDistanceStrict } from 'date-fns';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import TaskForm from '@/components/activity-zen/task-form';
@@ -28,7 +28,6 @@ export default function ActivityLogPage() {
   const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
   
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<TaskStatus | 'all'>('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
 
   const { toast } = useToast();
@@ -38,7 +37,7 @@ export default function ActivityLogPage() {
       const storedTasks = localStorage.getItem(STORAGE_KEY);
       if (storedTasks) {
         const parsedTasks = JSON.parse(storedTasks, (key, value) => {
-            if ((key === 'dueDate' || key === 'createdAt') && value) return new Date(value);
+            if ((key === 'startTime' || key === 'endTime' || key === 'createdAt') && value) return new Date(value);
             return value;
         });
         setTasks(parsedTasks);
@@ -69,21 +68,20 @@ export default function ActivityLogPage() {
           ? task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
             task.description?.toLowerCase().includes(searchTerm.toLowerCase())
           : true;
-        const statusMatch = statusFilter === 'all' || task.status === statusFilter;
         const categoryMatch = categoryFilter === 'all' || task.category === categoryFilter;
-        return searchMatch && statusMatch && categoryMatch;
+        return searchMatch && categoryMatch;
       })
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }, [tasks, searchTerm, statusFilter, categoryFilter]);
+  }, [tasks, searchTerm, categoryFilter]);
 
   const handleTaskSubmit = (taskData: Omit<Task, 'id' | 'createdAt'> | Task) => {
     if ('id' in taskData && taskData.id) {
       setTasks(tasks.map(t => (t.id === taskData.id ? taskData as Task : t)));
       toast({ title: 'Activity Updated!', description: `"${taskData.title}" has been updated.` });
     } else {
-      const newTask: Task = { ...taskData, id: crypto.randomUUID(), createdAt: new Date() };
+      const newTask: Task = { ...(taskData as Omit<Task, 'id' | 'createdAt'>), id: crypto.randomUUID(), createdAt: new Date() };
       setTasks([...tasks, newTask]);
-      toast({ title: 'Activity Created!', description: `"${newTask.title}" has been added.` });
+      toast({ title: 'Activity Logged!', description: `"${newTask.title}" has been logged.` });
     }
     setIsDialogOpen(false);
     setTaskToEdit(null);
@@ -100,7 +98,7 @@ export default function ActivityLogPage() {
       setTasks(tasks.filter(t => t.id !== taskToDelete));
       setTaskToDelete(null);
       if (task) {
-        toast({ title: 'Activity Deleted', description: `"${task.title}" has been deleted.`, variant: 'destructive' });
+        toast({ title: 'Activity Deleted', description: `"${task.title}" has been deleted.`});
       }
     }
   };
@@ -127,12 +125,12 @@ export default function ActivityLogPage() {
               <DialogTrigger asChild>
                 <Button>
                   <PlusCircle className="mr-2" />
-                  Add Activity
+                  Log Activity
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-xl">
                   <DialogHeader>
-                      <DialogTitle>{taskToEdit ? 'Edit Activity' : 'Create a new activity'}</DialogTitle>
+                      <DialogTitle>{taskToEdit ? 'Edit Activity' : 'Log a new activity'}</DialogTitle>
                   </DialogHeader>
                   <TaskForm 
                       onSubmit={handleTaskSubmit} 
@@ -150,17 +148,6 @@ export default function ActivityLogPage() {
                 <Input placeholder="Search activities..." className="pl-10" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
               </div>
               <div className="flex items-center gap-2 ml-auto">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="gap-1">Status: {statusFilter === 'all' ? 'All' : statusFilter} <ChevronDown className="h-4 w-4" /></Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    <DropdownMenuItem onSelect={() => setStatusFilter('all')}>All</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => setStatusFilter('To Do')}>To Do</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => setStatusFilter('In Progress')}>In Progress</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => setStatusFilter('Done')}>Done</DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" className="gap-1">Category: {categoryFilter === 'all' ? 'All' : categoryFilter} <ChevronDown className="h-4 w-4" /></Button>
@@ -182,10 +169,10 @@ export default function ActivityLogPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Activity</TableHead>
-                    <TableHead>Status</TableHead>
                     <TableHead>Category</TableHead>
-                    <TableHead>Due Date</TableHead>
-                    <TableHead>Notes</TableHead>
+                    <TableHead>Start Time</TableHead>
+                    <TableHead>End Time</TableHead>
+                    <TableHead>Duration</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -193,12 +180,16 @@ export default function ActivityLogPage() {
                   {filteredTasks.map((task) => (
                     <TableRow key={task.id}>
                       <TableCell className="font-medium">{task.title}</TableCell>
-                      <TableCell className="text-muted-foreground">{task.status}</TableCell>
                       <TableCell className="text-muted-foreground">{task.category}</TableCell>
                       <TableCell className="text-muted-foreground">
-                        {task.dueDate ? format(task.dueDate, 'MMM d, yyyy') : 'N/A'}
+                        {format(task.startTime, 'MMM d, h:mm a')}
                       </TableCell>
-                      <TableCell className="text-muted-foreground truncate max-w-xs">{task.description || 'N/A'}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {task.endTime ? format(task.endTime, 'MMM d, h:mm a') : 'In Progress'}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {task.endTime ? formatDistanceStrict(task.endTime, task.startTime) : '-'}
+                      </TableCell>
                       <TableCell className="text-right">
                         <Button variant="link" className="p-0 h-auto text-primary" onClick={() => handleEdit(task)}>Edit</Button>
                         <span className="mx-1 text-muted-foreground">|</span>
@@ -212,7 +203,7 @@ export default function ActivityLogPage() {
                 <div className="flex flex-col items-center justify-center text-center py-20">
                     <ListX className="w-16 h-16 text-muted-foreground mb-4" />
                     <h2 className="text-2xl font-semibold mb-2">No Activities Found</h2>
-                    <p className="text-muted-foreground">Your activity log is empty. Start by adding a new activity.</p>
+                    <p className="text-muted-foreground">Your activity log is empty. Start by logging a new activity.</p>
                 </div>
             )}
           </CardContent>
