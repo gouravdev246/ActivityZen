@@ -8,6 +8,7 @@ export interface Task {
   status: TaskStatus;
   category: string;
   dueDate: Date | null;
+  createdAt: Date;
 }
 
 export const sortOptions = [

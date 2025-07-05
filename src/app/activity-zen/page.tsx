@@ -33,7 +33,7 @@ export default function ActivityZenPage() {
       const storedTasks = localStorage.getItem(STORAGE_KEY);
       if (storedTasks) {
         const parsedTasks = JSON.parse(storedTasks, (key, value) => {
-            if (key === 'dueDate' && value) return new Date(value);
+            if ((key === 'dueDate' || key === 'createdAt') && value) return new Date(value);
             return value;
         });
         setTasks(parsedTasks);
@@ -83,18 +83,20 @@ export default function ActivityZenPage() {
             case 'status':
                 return a.status.localeCompare(b.status);
             default:
-                return 0;
+                if (!a.createdAt) return 1;
+                if (!b.createdAt) return -1;
+                return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         }
     });
 
   }, [tasks, statusFilter, categoryFilter, sortOption]);
 
-  const handleTaskSubmit = (taskData: Omit<Task, 'id'> | Task) => {
+  const handleTaskSubmit = (taskData: Omit<Task, 'id' | 'createdAt'> | Task) => {
     if ('id' in taskData && taskData.id) {
-      setTasks(tasks.map(t => (t.id === taskData.id ? taskData : t)));
+      setTasks(tasks.map(t => (t.id === taskData.id ? taskData as Task : t)));
       toast({ title: 'Task Updated!', description: `"${taskData.title}" has been updated.` });
     } else {
-      const newTask = { ...taskData, id: crypto.randomUUID() };
+      const newTask: Task = { ...taskData, id: crypto.randomUUID(), createdAt: new Date() };
       setTasks([...tasks, newTask]);
       toast({ title: 'Task Created!', description: `"${newTask.title}" has been added.` });
     }
