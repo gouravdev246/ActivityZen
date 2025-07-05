@@ -5,14 +5,14 @@ import { PlusCircle, ListX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import TaskCard from '@/components/activity-zen/task-card';
-import TaskForm from '@/components/activity-zen/task-form';
-import TaskFilters from '@/components/activity-zen/task-filters';
+import ActivityCard from '@/components/activity-zen/activity-card';
+import ActivityForm from '@/components/activity-zen/activity-form';
+import ActivityFilters from '@/components/activity-zen/activity-filters';
 import { DashboardHeader } from '@/components/dashboard/header';
 import { type Activity, type SortOption } from '@/lib/types';
 import { Toaster } from '@/components/ui/toaster';
 import { useToast } from '@/hooks/use-toast';
-import { isValid } from 'date-fns';
+import { isValid, parseISO } from 'date-fns';
 
 const STORAGE_KEY = 'activity-zen-activities';
 
@@ -31,13 +31,12 @@ export default function ActivityZenPage() {
     try {
       const storedActivities = localStorage.getItem(STORAGE_KEY);
       if (storedActivities) {
-        const parsedActivities = JSON.parse(storedActivities, (key, value) => {
-            if ((key === 'startTime' || key === 'endTime' || key === 'createdAt') && value) {
-              const date = new Date(value);
-              return isValid(date) ? date : null;
-            }
-            return value;
-        });
+        const parsedActivities = JSON.parse(storedActivities).map((activity: any) => ({
+          ...activity,
+          startTime: activity.startTime ? parseISO(activity.startTime) : null,
+          endTime: activity.endTime ? parseISO(activity.endTime) : null,
+          createdAt: activity.createdAt ? parseISO(activity.createdAt) : new Date(),
+        }));
         setActivities(Array.isArray(parsedActivities) ? parsedActivities : []);
       }
     } catch (error) {
@@ -140,7 +139,7 @@ export default function ActivityZenPage() {
                         <DialogHeader>
                             <DialogTitle>{activityToEdit ? 'Edit Activity' : 'Log a new activity'}</DialogTitle>
                         </DialogHeader>
-                        <TaskForm 
+                        <ActivityForm 
                             onSubmit={handleActivitySubmit} 
                             activityToEdit={activityToEdit} 
                         />
@@ -148,7 +147,7 @@ export default function ActivityZenPage() {
                 </Dialog>
             </div>
 
-            <TaskFilters
+            <ActivityFilters
               sortOption={sortOption}
               setSortOption={setSortOption}
             />
@@ -156,7 +155,7 @@ export default function ActivityZenPage() {
             {sortedActivities.length > 0 ? (
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
                     {sortedActivities.map(activity => (
-                        <TaskCard 
+                        <ActivityCard 
                             key={activity.id} 
                             activity={activity} 
                             onEdit={handleEdit} 
@@ -180,7 +179,7 @@ export default function ActivityZenPage() {
                            <DialogHeader>
                                 <DialogTitle>{activityToEdit ? 'Edit Activity' : 'Log a new activity'}</DialogTitle>
                             </DialogHeader>
-                            <TaskForm 
+                            <ActivityForm 
                                 onSubmit={handleActivitySubmit} 
                                 activityToEdit={activityToEdit}
                             />
