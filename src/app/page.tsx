@@ -8,9 +8,11 @@ import { WeeklyActivityChart } from "@/components/dashboard/weekly-activity-char
 import { CalendarView } from "@/components/dashboard/calendar-view";
 import { KeyMetricCard } from "@/components/dashboard/key-metric-card";
 import { CustomizePanel } from "@/components/dashboard/customize-panel";
-import { type Task } from '@/lib/types';
+import { type Activity } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { subDays, eachDayOfInterval, format, startOfWeek, endOfWeek, subWeeks, isWithinInterval, differenceInMinutes } from 'date-fns';
+
+const STORAGE_KEY = 'activity-zen-activities';
 
 function formatDuration(minutes: number) {
     const hours = Math.floor(minutes / 60);
@@ -21,42 +23,42 @@ function formatDuration(minutes: number) {
 }
 
 export default function DashboardPage() {
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [activities, setActivities] = useState<Activity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     try {
-      const storedTasks = localStorage.getItem('activity-zen-tasks');
-      if (storedTasks) {
-        const parsedTasks = JSON.parse(storedTasks, (key, value) => {
+      const storedActivities = localStorage.getItem(STORAGE_KEY);
+      if (storedActivities) {
+        const parsedActivities = JSON.parse(storedActivities, (key, value) => {
             if ((key === 'startTime' || key === 'endTime' || key === 'createdAt') && value) {
               return new Date(value);
             }
             return value;
         });
-        setTasks(parsedTasks);
+        setActivities(parsedActivities);
       }
     } catch (error) {
-      console.error("Failed to load tasks from localStorage", error);
+      console.error("Failed to load activities from localStorage", error);
     } finally {
         setIsLoading(false);
     }
   }, []);
 
   const stats = useMemo(() => {
-    const totalActivities = tasks.length;
-    const completedTasks = tasks.filter(task => task.endTime);
+    const totalActivities = activities.length;
+    const completedActivities = activities.filter(activity => activity.endTime);
     
-    const totalTimeSpent = completedTasks.reduce((acc, task) => {
-        if (task.endTime) {
-            return acc + differenceInMinutes(task.endTime, task.startTime);
+    const totalTimeSpent = completedActivities.reduce((acc, activity) => {
+        if (activity.endTime) {
+            return acc + differenceInMinutes(activity.endTime, activity.startTime);
         }
         return acc;
     }, 0);
 
-    const categoryCounts = tasks.reduce((acc, task) => {
-        if(task.category) {
-            acc[task.category] = (acc[task.category] || 0) + 1;
+    const categoryCounts = activities.reduce((acc, activity) => {
+        if(activity.category) {
+            acc[activity.category] = (acc[activity.category] || 0) + 1;
         }
         return acc;
     }, {} as Record<string, number>);
@@ -65,8 +67,8 @@ export default function DashboardPage() {
         ? Object.entries(categoryCounts).sort((a, b) => b[1] - a[1])[0][0] 
         : 'N/A';
         
-    const averageTimePerActivity = completedTasks.length > 0 
-        ? formatDuration(Math.round(totalTimeSpent / completedTasks.length))
+    const averageTimePerActivity = completedActivities.length > 0 
+        ? formatDuration(Math.round(totalTimeSpent / completedActivities.length))
         : 'N/A';
 
     return {
@@ -76,22 +78,22 @@ export default function DashboardPage() {
         mostFrequentCategory,
         averageTimePerActivity
     };
-  }, [tasks]);
+  }, [activities]);
 
   const dailyChartData = useMemo(() => {
     const today = new Date();
     const last7Days = eachDayOfInterval({ start: subDays(today, 6), end: today });
-    const completedTasks = tasks.filter(t => t.endTime);
+    const completedActivities = activities.filter(t => t.endTime);
 
     return last7Days.map(day => {
-        const count = completedTasks.filter(t => t.endTime && format(t.endTime, 'yyyy-MM-dd') === format(day, 'yyyy-MM-dd')).length;
+        const count = completedActivities.filter(t => t.endTime && format(t.endTime, 'yyyy-MM-dd') === format(day, 'yyyy-MM-dd')).length;
         return { name: format(day, 'E'), value: count };
     });
-  }, [tasks]);
+  }, [activities]);
 
   const weeklyChartData = useMemo(() => {
     const today = new Date();
-    const completedTasks = tasks.filter(t => t.endTime);
+    const completedActivities = activities.filter(t => t.endTime);
     
     const weeks = [
         { name: 'Week 1', interval: { start: startOfWeek(subWeeks(today, 3)), end: endOfWeek(subWeeks(today, 3)) } },
@@ -101,10 +103,10 @@ export default function DashboardPage() {
     ];
 
     return weeks.map(week => {
-        const count = completedTasks.filter(t => t.endTime && isWithinInterval(t.endTime, week.interval)).length;
+        const count = completedActivities.filter(t => t.endTime && isWithinInterval(t.endTime, week.interval)).length;
         return { name: week.name, value: count };
     });
-  }, [tasks]);
+  }, [activities]);
   
   if (isLoading) {
     return (
@@ -166,7 +168,7 @@ export default function DashboardPage() {
 
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2">
-            <CalendarView tasks={tasks} />
+            <CalendarView activities={activities} />
           </div>
           <div className="space-y-6">
             <div>

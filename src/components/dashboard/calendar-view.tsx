@@ -2,20 +2,20 @@
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useState, useMemo } from 'react';
-import { type Task } from '@/lib/types';
+import { type Activity } from '@/lib/types';
 
 interface CalendarViewProps {
-  tasks: Task[];
+  activities: Activity[];
 }
 
-export function CalendarView({ tasks }: CalendarViewProps) {
+export function CalendarView({ activities }: CalendarViewProps) {
   const [date, setDate] = useState<Date | undefined>(new Date());
 
-  const taskStartDates = useMemo(() => {
-    return tasks
-      .map(task => task.startTime)
+  const activityStartDates = useMemo(() => {
+    return activities
+      .map(activity => activity.startTime)
       .filter((d): d is Date => d !== null);
-  }, [tasks]);
+  }, [activities]);
 
   return (
     <Card>
@@ -28,7 +28,7 @@ export function CalendarView({ tasks }: CalendarViewProps) {
           selected={date}
           onSelect={setDate}
           className="p-0"
-          modifiers={{ due: taskStartDates }}
+          modifiers={{ due: activityStartDates }}
           modifiersStyles={{
             due: { 
               border: "1px solid hsl(var(--primary))",

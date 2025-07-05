@@ -1,9 +1,9 @@
 'use server';
 
 /**
- * @fileOverview Suggests task categories based on the task title and description.
+ * @fileOverview Suggests activity categories based on the activity title and description.
  *
- * - suggestCategory - A function that suggests categories for a given task.
+ * - suggestCategory - A function that suggests categories for a given activity.
  * - SuggestCategoryInput - The input type for the suggestCategory function.
  * - SuggestCategoryOutput - The return type for the suggestCategory function.
  */
@@ -12,13 +12,13 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const SuggestCategoryInputSchema = z.object({
-  title: z.string().describe('The title of the task.'),
-  description: z.string().describe('The description of the task.'),
+  title: z.string().describe('The title of the activity.'),
+  description: z.string().describe('The description of the activity.'),
 });
 export type SuggestCategoryInput = z.infer<typeof SuggestCategoryInputSchema>;
 
 const SuggestCategoryOutputSchema = z.object({
-  category: z.string().describe('The suggested category for the task.'),
+  category: z.string().describe('The suggested category for the activity.'),
 });
 export type SuggestCategoryOutput = z.infer<typeof SuggestCategoryOutputSchema>;
 
@@ -30,10 +30,10 @@ const prompt = ai.definePrompt({
   name: 'suggestCategoryPrompt',
   input: {schema: SuggestCategoryInputSchema},
   output: {schema: SuggestCategoryOutputSchema},
-  prompt: `You are a task categorization expert. Given the title and description of a task, suggest a relevant category for it.
+  prompt: `You are an activity categorization expert. Given the title and description of an activity, suggest a relevant category for it.
 
-Task Title: {{{title}}}
-Task Description: {{{description}}}
+Activity Title: {{{title}}}
+Activity Description: {{{description}}}
 
 Suggest Category:`,
 });

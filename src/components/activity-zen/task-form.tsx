@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sparkles, Loader2 } from 'lucide-react';
-import { type Task } from '@/lib/types';
+import { type Activity } from '@/lib/types';
 import { getCategorySuggestion } from '@/app/actions';
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
@@ -32,8 +32,8 @@ const FormSchema = z.object({
 });
 
 type TaskFormProps = {
-  onSubmit: (data: Omit<Task, 'id' | 'createdAt'>) => void;
-  taskToEdit?: Task | null;
+  onSubmit: (data: Omit<Activity, 'id' | 'createdAt'>) => void;
+  activityToEdit?: Activity | null;
   categories: string[];
 };
 
@@ -46,7 +46,7 @@ const toDateTimeLocal = (date: Date | null | undefined) => {
 };
 
 
-export default function TaskForm({ onSubmit, taskToEdit, categories }: TaskFormProps) {
+export default function TaskForm({ onSubmit, activityToEdit, categories }: TaskFormProps) {
   const [isSuggesting, setIsSuggesting] = useState(false);
   const { toast } = useToast();
 
@@ -62,13 +62,13 @@ export default function TaskForm({ onSubmit, taskToEdit, categories }: TaskFormP
   });
 
   useEffect(() => {
-    if (taskToEdit) {
+    if (activityToEdit) {
       form.reset({
-        title: taskToEdit.title,
-        description: taskToEdit.description || '',
-        category: taskToEdit.category,
-        startTime: toDateTimeLocal(taskToEdit.startTime),
-        endTime: toDateTimeLocal(taskToEdit.endTime),
+        title: activityToEdit.title,
+        description: activityToEdit.description || '',
+        category: activityToEdit.category,
+        startTime: toDateTimeLocal(activityToEdit.startTime),
+        endTime: toDateTimeLocal(activityToEdit.endTime),
       });
     } else {
       form.reset({
@@ -79,7 +79,7 @@ export default function TaskForm({ onSubmit, taskToEdit, categories }: TaskFormP
         endTime: '',
       });
     }
-  }, [taskToEdit, form]);
+  }, [activityToEdit, form]);
 
   const handleFormSubmit = (data: z.infer<typeof FormSchema>) => {
     const finalData = {
@@ -88,8 +88,8 @@ export default function TaskForm({ onSubmit, taskToEdit, categories }: TaskFormP
         endTime: data.endTime ? new Date(data.endTime) : null,
     };
     
-    if (taskToEdit) {
-      onSubmit({ ...taskToEdit, ...finalData });
+    if (activityToEdit) {
+      onSubmit({ ...activityToEdit, ...finalData });
     } else {
       onSubmit(finalData);
     }
@@ -207,7 +207,7 @@ export default function TaskForm({ onSubmit, taskToEdit, categories }: TaskFormP
             />
         </div>
         <Button type="submit" className="w-full">
-          {taskToEdit ? 'Save Changes' : 'Log Activity'}
+          {activityToEdit ? 'Save Changes' : 'Log Activity'}
         </Button>
       </form>
     </Form>

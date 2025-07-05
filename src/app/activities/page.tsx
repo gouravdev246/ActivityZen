@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Pagination } from "@/components/ui/pagination";
 import { ChevronDown, Search, PlusCircle, ListX } from "lucide-react";
-import { type Task } from '@/lib/types';
+import { type Activity } from '@/lib/types';
 import { format, formatDistanceStrict, isValid } from 'date-fns';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -17,15 +17,15 @@ import TaskForm from '@/components/activity-zen/task-form';
 import { useToast } from '@/hooks/use-toast';
 import { Toaster } from '@/components/ui/toaster';
 
-const STORAGE_KEY = 'activity-zen-tasks';
+const STORAGE_KEY = 'activity-zen-activities';
 
 export default function ActivityLogPage() {
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [activities, setActivities] = useState<Activity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
-  const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
+  const [activityToEdit, setActivityToEdit] = useState<Activity | null>(null);
+  const [activityToDelete, setActivityToDelete] = useState<string | null>(null);
   
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -34,18 +34,19 @@ export default function ActivityLogPage() {
 
   useEffect(() => {
     try {
-      const storedTasks = localStorage.getItem(STORAGE_KEY);
-      if (storedTasks) {
-        const parsedTasks = JSON.parse(storedTasks, (key, value) => {
+      const storedActivities = localStorage.getItem(STORAGE_KEY);
+      if (storedActivities) {
+        const parsedActivities = JSON.parse(storedActivities, (key, value) => {
             if ((key === 'startTime' || key === 'endTime' || key === 'createdAt') && value) {
-              return new Date(value);
+              const date = new Date(value);
+              return isValid(date) ? date : null;
             }
             return value;
         });
-        setTasks(Array.isArray(parsedTasks) ? parsedTasks : []);
+        setActivities(Array.isArray(parsedActivities) ? parsedActivities : []);
       }
     } catch (error) {
-      console.error("Failed to load tasks from localStorage", error);
+      console.error("Failed to load activities from localStorage", error);
     } finally {
         setIsLoading(false);
     }
@@ -54,23 +55,23 @@ export default function ActivityLogPage() {
   useEffect(() => {
     if (!isLoading) {
         try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(activities));
         } catch (error) {
-            console.error("Failed to save tasks to localStorage", error);
+            console.error("Failed to save activities to localStorage", error);
         }
     }
-  }, [tasks, isLoading]);
+  }, [activities, isLoading]);
 
-  const categories = useMemo(() => ['all', ...Array.from(new Set(tasks.map(t => t.category).filter(Boolean)))], [tasks]);
+  const categories = useMemo(() => ['all', ...Array.from(new Set(activities.map(t => t.category).filter(Boolean)))], [activities]);
   
-  const filteredTasks = useMemo(() => {
-    return tasks
-      .filter(task => {
+  const filteredActivities = useMemo(() => {
+    return activities
+      .filter(activity => {
         const searchMatch = searchTerm.length > 0 
-          ? task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            task.description?.toLowerCase().includes(searchTerm.toLowerCase())
+          ? activity.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            activity.description?.toLowerCase().includes(searchTerm.toLowerCase())
           : true;
-        const categoryMatch = categoryFilter === 'all' || task.category === categoryFilter;
+        const categoryMatch = categoryFilter === 'all' || activity.category === categoryFilter;
         return searchMatch && categoryMatch;
       })
       .sort((a, b) => {
@@ -78,33 +79,33 @@ export default function ActivityLogPage() {
           const dateB = b.createdAt instanceof Date && isValid(b.createdAt) ? b.createdAt.getTime() : 0;
           return dateB - dateA;
       });
-  }, [tasks, searchTerm, categoryFilter]);
+  }, [activities, searchTerm, categoryFilter]);
 
-  const handleTaskSubmit = (taskData: Omit<Task, 'id' | 'createdAt'> | Task) => {
-    if ('id' in taskData && taskData.id) {
-      setTasks(tasks.map(t => (t.id === taskData.id ? taskData as Task : t)));
-      toast({ title: 'Activity Updated!', description: `"${taskData.title}" has been updated.` });
+  const handleActivitySubmit = (activityData: Omit<Activity, 'id' | 'createdAt'> | Activity) => {
+    if ('id' in activityData && activityData.id) {
+      setActivities(activities.map(t => (t.id === activityData.id ? activityData as Activity : t)));
+      toast({ title: 'Activity Updated!', description: `"${activityData.title}" has been updated.` });
     } else {
-      const newTask: Task = { ...(taskData as Omit<Task, 'id' | 'createdAt'>), id: crypto.randomUUID(), createdAt: new Date() };
-      setTasks([...tasks, newTask]);
-      toast({ title: 'Activity Logged!', description: `"${newTask.title}" has been logged.` });
+      const newActivity: Activity = { ...(activityData as Omit<Activity, 'id' | 'createdAt'>), id: crypto.randomUUID(), createdAt: new Date() };
+      setActivities([...activities, newActivity]);
+      toast({ title: 'Activity Logged!', description: `"${newActivity.title}" has been logged.` });
     }
     setIsDialogOpen(false);
-    setTaskToEdit(null);
+    setActivityToEdit(null);
   };
   
-  const handleEdit = (task: Task) => {
-    setTaskToEdit(task);
+  const handleEdit = (activity: Activity) => {
+    setActivityToEdit(activity);
     setIsDialogOpen(true);
   };
   
   const handleDeleteConfirm = () => {
-    if (taskToDelete) {
-      const task = tasks.find(t => t.id === taskToDelete);
-      setTasks(tasks.filter(t => t.id !== taskToDelete));
-      setTaskToDelete(null);
-      if (task) {
-        toast({ title: 'Activity Deleted', description: `"${task.title}" has been deleted.`});
+    if (activityToDelete) {
+      const activity = activities.find(t => t.id === activityToDelete);
+      setActivities(activities.filter(t => t.id !== activityToDelete));
+      setActivityToDelete(null);
+      if (activity) {
+        toast({ title: 'Activity Deleted', description: `"${activity.title}" has been deleted.`});
       }
     }
   };
@@ -127,7 +128,7 @@ export default function ActivityLogPage() {
       <main className="flex-1 p-4 sm:px-6 sm:py-0 md:p-8">
         <div className="flex items-center justify-between my-6">
           <h1 className="text-3xl font-bold">Activities</h1>
-            <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) setTaskToEdit(null); }}>
+            <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) setActivityToEdit(null); }}>
               <DialogTrigger asChild>
                 <Button>
                   <PlusCircle className="mr-2" />
@@ -136,11 +137,11 @@ export default function ActivityLogPage() {
               </DialogTrigger>
               <DialogContent className="sm:max-w-xl">
                   <DialogHeader>
-                      <DialogTitle>{taskToEdit ? 'Edit Activity' : 'Log a new activity'}</DialogTitle>
+                      <DialogTitle>{activityToEdit ? 'Edit Activity' : 'Log a new activity'}</DialogTitle>
                   </DialogHeader>
                   <TaskForm 
-                      onSubmit={handleTaskSubmit} 
-                      taskToEdit={taskToEdit} 
+                      onSubmit={handleActivitySubmit} 
+                      activityToEdit={activityToEdit} 
                       categories={categories.filter(c => c !== 'all')} 
                   />
               </DialogContent>
@@ -170,7 +171,7 @@ export default function ActivityLogPage() {
             </div>
           </CardHeader>
           <CardContent className="p-0">
-            {filteredTasks.length > 0 ? (
+            {filteredActivities.length > 0 ? (
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -183,25 +184,25 @@ export default function ActivityLogPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredTasks.map((task) => (
-                    <TableRow key={task.id}>
-                      <TableCell className="font-medium">{task.title}</TableCell>
-                      <TableCell className="text-muted-foreground">{task.category}</TableCell>
+                  {filteredActivities.map((activity) => (
+                    <TableRow key={activity.id}>
+                      <TableCell className="font-medium">{activity.title}</TableCell>
+                      <TableCell className="text-muted-foreground">{activity.category}</TableCell>
                       <TableCell className="text-muted-foreground">
-                        {isValid(task.startTime) ? format(task.startTime, 'MMM d, h:mm a') : 'Invalid Date'}
+                        {isValid(activity.startTime) ? format(activity.startTime, 'MMM d, h:mm a') : 'Invalid Date'}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {task.endTime && isValid(task.endTime) ? format(task.endTime, 'MMM d, h:mm a') : 'In Progress'}
+                        {activity.endTime && isValid(activity.endTime) ? format(activity.endTime, 'MMM d, h:mm a') : 'In Progress'}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {task.endTime && isValid(task.endTime) && isValid(task.startTime)
-                          ? formatDistanceStrict(task.endTime, task.startTime) 
+                        {activity.endTime && isValid(activity.endTime) && isValid(activity.startTime)
+                          ? formatDistanceStrict(activity.endTime, activity.startTime) 
                           : '-'}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button variant="link" className="p-0 h-auto text-primary" onClick={() => handleEdit(task)}>Edit</Button>
+                        <Button variant="link" className="p-0 h-auto text-primary" onClick={() => handleEdit(activity)}>Edit</Button>
                         <span className="mx-1 text-muted-foreground">|</span>
-                        <Button variant="link" className="p-0 h-auto text-destructive" onClick={() => setTaskToDelete(task.id)}>Delete</Button>
+                        <Button variant="link" className="p-0 h-auto text-destructive" onClick={() => setActivityToDelete(activity.id)}>Delete</Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -215,7 +216,7 @@ export default function ActivityLogPage() {
                 </div>
             )}
           </CardContent>
-          {filteredTasks.length > 0 && (
+          {filteredActivities.length > 0 && (
             <CardFooter>
               <Pagination />
             </CardFooter>
@@ -224,13 +225,13 @@ export default function ActivityLogPage() {
       </main>
     </div>
     <Toaster />
-    <AlertDialog open={!!taskToDelete} onOpenChange={() => setTaskToDelete(null)}>
+    <AlertDialog open={!!activityToDelete} onOpenChange={() => setActivityToDelete(null)}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
           <AlertDialogDescription>
             This action cannot be undone. This will permanently delete the activity
-            "{tasks.find(t => t.id === taskToDelete)?.title}".
+            "{activities.find(t => t.id === activityToDelete)?.title}".
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
