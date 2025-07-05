@@ -16,6 +16,7 @@ import { useAuth } from '@/context/auth-provider';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { updateProfile } from 'firebase/auth';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -60,7 +61,10 @@ export default function ProfilePageClient() {
 
         if (docSnap.exists()) {
           const settings = docSnap.data();
-          setAccountInfo({ name: user.displayName || "", email: user.email || "" });
+          setAccountInfo({ 
+            name: settings.accountInfo?.name || user.displayName || "", 
+            email: user.email || "" 
+          });
           setTheme(settings.preferences?.theme || 'system');
           setNotifications(settings.preferences?.notifications || false);
           setGoals(settings.goals || { daily: "", weekly: "" });
@@ -100,6 +104,7 @@ export default function ProfilePageClient() {
   const handleAccountUpdate = async () => {
     if (!user) return;
     try {
+        await updateProfile(user, { displayName: accountInfo.name, photoURL: user.photoURL });
         const settingsDocRef = doc(db, 'settings', user.uid);
         await setDoc(settingsDocRef, { accountInfo: { name: accountInfo.name } }, { merge: true });
         toast({ title: "Account Updated", description: "Your account information has been saved." });
