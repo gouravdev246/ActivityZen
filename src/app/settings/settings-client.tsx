@@ -14,11 +14,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/context/auth-provider';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-
-const ACCOUNT_KEY = 'profile-settings-account';
-const THEME_KEY = 'profile-settings-theme';
-const NOTIFICATIONS_KEY = 'profile-settings-notifications';
-const GOALS_KEY = 'profile-settings-goals';
+import { db } from '@/lib/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 
 export default function ProfilePageClient() {
@@ -41,37 +38,42 @@ export default function ProfilePageClient() {
   
   useEffect(() => {
     if (!user) {
-        // isLoading is true until user is loaded, so skeleton will be shown
-        return;
+      return;
     }
 
-    const USER_ACCOUNT_KEY = `${ACCOUNT_KEY}-${user.uid}`;
-    const USER_THEME_KEY = `${THEME_KEY}-${user.uid}`;
-    const USER_NOTIFICATIONS_KEY = `${NOTIFICATIONS_KEY}-${user.uid}`;
-    const USER_GOALS_KEY = `${GOALS_KEY}-${user.uid}`;
+    const fetchSettings = async () => {
+      setIsLoading(true);
+      try {
+        const settingsDocRef = doc(db, 'settings', user.uid);
+        const docSnap = await getDoc(settingsDocRef);
 
-    try {
-      const storedAccount = localStorage.getItem(USER_ACCOUNT_KEY);
-      if (storedAccount) {
-        setAccountInfo(JSON.parse(storedAccount));
-      } else {
-        setAccountInfo({ name: user.displayName || "", email: user.email || "" });
+        if (docSnap.exists()) {
+          const settings = docSnap.data();
+          setAccountInfo(settings.accountInfo || { name: user.displayName || "", email: user.email || "" });
+          setTheme(settings.preferences?.theme || 'system');
+          setNotifications(settings.preferences?.notifications || false);
+          setGoals(settings.goals || { daily: "", weekly: "" });
+        } else {
+          // Set default values for a new user
+          setAccountInfo({ name: user.displayName || "", email: user.email || "" });
+          setTheme('system');
+          setNotifications(false);
+          setGoals({ daily: "", weekly: "" });
+        }
+      } catch (error) {
+        console.error("Failed to load settings from Firestore", error);
+        toast({
+          variant: 'destructive',
+          title: "Error",
+          description: "Could not load your settings.",
+        });
+      } finally {
+        setIsLoading(false);
       }
+    };
 
-      const storedTheme = localStorage.getItem(USER_THEME_KEY);
-      if (storedTheme) setTheme(JSON.parse(storedTheme));
-
-      const storedNotifications = localStorage.getItem(USER_NOTIFICATIONS_KEY);
-      if (storedNotifications) setNotifications(JSON.parse(storedNotifications));
-
-      const storedGoals = localStorage.getItem(USER_GOALS_KEY);
-      if (storedGoals) setGoals(JSON.parse(storedGoals));
-    } catch (error) {
-      console.error("Failed to load settings from localStorage", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user]);
+    fetchSettings();
+  }, [user, toast]);
 
   useEffect(() => {
     if (theme === 'dark') {
@@ -84,23 +86,40 @@ export default function ProfilePageClient() {
     }
   }, [theme]);
 
-  const handleAccountUpdate = () => {
+  const handleAccountUpdate = async () => {
     if (!user) return;
-    localStorage.setItem(`${ACCOUNT_KEY}-${user.uid}`, JSON.stringify(accountInfo));
-    toast({ title: "Account Updated", description: "Your account information has been saved." });
+    try {
+        const settingsDocRef = doc(db, 'settings', user.uid);
+        await setDoc(settingsDocRef, { accountInfo }, { merge: true });
+        toast({ title: "Account Updated", description: "Your account information has been saved." });
+    } catch(e) {
+        console.error("Error updating account:", e);
+        toast({ variant: 'destructive', title: "Error", description: "Failed to update account information." });
+    }
   };
   
-  const handlePreferencesSave = () => {
+  const handlePreferencesSave = async () => {
     if (!user) return;
-    localStorage.setItem(`${THEME_KEY}-${user.uid}`, JSON.stringify(theme));
-    localStorage.setItem(`${NOTIFICATIONS_KEY}-${user.uid}`, JSON.stringify(notifications));
-    toast({ title: "Preferences Saved", description: "Your app preferences have been saved." });
+    try {
+        const settingsDocRef = doc(db, 'settings', user.uid);
+        await setDoc(settingsDocRef, { preferences: { theme, notifications } }, { merge: true });
+        toast({ title: "Preferences Saved", description: "Your app preferences have been saved." });
+    } catch(e) {
+        console.error("Error saving preferences:", e);
+        toast({ variant: 'destructive', title: "Error", description: "Failed to save preferences." });
+    }
   };
   
-  const handleGoalsUpdate = () => {
+  const handleGoalsUpdate = async () => {
     if (!user) return;
-    localStorage.setItem(`${GOALS_KEY}-${user.uid}`, JSON.stringify(goals));
-    toast({ title: "Goals Updated", description: "Your activity goals have been updated." });
+    try {
+        const settingsDocRef = doc(db, 'settings', user.uid);
+        await setDoc(settingsDocRef, { goals }, { merge: true });
+        toast({ title: "Goals Updated", description: "Your activity goals have been updated." });
+    } catch (e) {
+        console.error("Error updating goals:", e);
+        toast({ variant: 'destructive', title: "Error", description: "Failed to update goals." });
+    }
   };
 
   if (isLoading) {
