@@ -12,6 +12,8 @@ import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAuth } from '@/context/auth-provider';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 const ACCOUNT_KEY = 'profile-settings-account';
 const THEME_KEY = 'profile-settings-theme';
@@ -21,38 +23,55 @@ const GOALS_KEY = 'profile-settings-goals';
 
 export default function ProfilePageClient() {
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const [isLoading, setIsLoading] = useState(true);
   const [accountInfo, setAccountInfo] = useState({
-    name: "Alex Doe",
-    email: "alex.doe@example.com",
+    name: "",
+    email: "",
   });
   const [theme, setTheme] = useState("system");
-  const [notifications, setNotifications] = useState(true);
+  const [notifications, setNotifications] = useState(false);
   const [goals, setGoals] = useState({
-    daily: "60",
-    weekly: "300",
+    daily: "",
+    weekly: "",
   });
+
+  const userInitial = user?.displayName?.[0] || user?.email?.[0] || 'U';
   
   useEffect(() => {
+    if (!user) {
+        // isLoading is true until user is loaded, so skeleton will be shown
+        return;
+    }
+
+    const USER_ACCOUNT_KEY = `${ACCOUNT_KEY}-${user.uid}`;
+    const USER_THEME_KEY = `${THEME_KEY}-${user.uid}`;
+    const USER_NOTIFICATIONS_KEY = `${NOTIFICATIONS_KEY}-${user.uid}`;
+    const USER_GOALS_KEY = `${GOALS_KEY}-${user.uid}`;
+
     try {
-      const storedAccount = localStorage.getItem(ACCOUNT_KEY);
-      if (storedAccount) setAccountInfo(JSON.parse(storedAccount));
+      const storedAccount = localStorage.getItem(USER_ACCOUNT_KEY);
+      if (storedAccount) {
+        setAccountInfo(JSON.parse(storedAccount));
+      } else {
+        setAccountInfo({ name: user.displayName || "", email: user.email || "" });
+      }
 
-      const storedTheme = localStorage.getItem(THEME_KEY);
-      if (storedTheme) setTheme(storedTheme);
+      const storedTheme = localStorage.getItem(USER_THEME_KEY);
+      if (storedTheme) setTheme(JSON.parse(storedTheme));
 
-      const storedNotifications = localStorage.getItem(NOTIFICATIONS_KEY);
+      const storedNotifications = localStorage.getItem(USER_NOTIFICATIONS_KEY);
       if (storedNotifications) setNotifications(JSON.parse(storedNotifications));
 
-      const storedGoals = localStorage.getItem(GOALS_KEY);
+      const storedGoals = localStorage.getItem(USER_GOALS_KEY);
       if (storedGoals) setGoals(JSON.parse(storedGoals));
     } catch (error) {
       console.error("Failed to load settings from localStorage", error);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     if (theme === 'dark') {
@@ -66,18 +85,21 @@ export default function ProfilePageClient() {
   }, [theme]);
 
   const handleAccountUpdate = () => {
-    localStorage.setItem(ACCOUNT_KEY, JSON.stringify(accountInfo));
+    if (!user) return;
+    localStorage.setItem(`${ACCOUNT_KEY}-${user.uid}`, JSON.stringify(accountInfo));
     toast({ title: "Account Updated", description: "Your account information has been saved." });
   };
   
   const handlePreferencesSave = () => {
-    localStorage.setItem(THEME_KEY, theme);
-    localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(notifications));
+    if (!user) return;
+    localStorage.setItem(`${THEME_KEY}-${user.uid}`, JSON.stringify(theme));
+    localStorage.setItem(`${NOTIFICATIONS_KEY}-${user.uid}`, JSON.stringify(notifications));
     toast({ title: "Preferences Saved", description: "Your app preferences have been saved." });
   };
   
   const handleGoalsUpdate = () => {
-    localStorage.setItem(GOALS_KEY, JSON.stringify(goals));
+    if (!user) return;
+    localStorage.setItem(`${GOALS_KEY}-${user.uid}`, JSON.stringify(goals));
     toast({ title: "Goals Updated", description: "Your activity goals have been updated." });
   };
 
@@ -151,12 +173,16 @@ export default function ProfilePageClient() {
                 type="email" 
                 value={accountInfo.email}
                 onChange={(e) => setAccountInfo({...accountInfo, email: e.target.value})}
+                disabled
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="profile-picture">Profile Picture</Label>
               <div className="flex items-center gap-4">
-                 <img src="https://i.pravatar.cc/64" alt="User avatar" data-ai-hint="person" className="h-16 w-16 rounded-full"/>
+                 <Avatar className="h-16 w-16">
+                  <AvatarImage src={user?.photoURL ?? undefined} alt="User avatar" data-ai-hint="person" />
+                  <AvatarFallback>{userInitial.toUpperCase()}</AvatarFallback>
+                </Avatar>
                  <Button variant="outline">Change Picture</Button>
               </div>
             </div>
@@ -211,6 +237,7 @@ export default function ProfilePageClient() {
                 type="number" 
                 value={goals.daily}
                 onChange={(e) => setGoals({...goals, daily: e.target.value})}
+                placeholder="e.g. 60"
               />
             </div>
             <div className="space-y-2">
@@ -220,6 +247,7 @@ export default function ProfilePageClient() {
                 type="number" 
                 value={goals.weekly}
                 onChange={(e) => setGoals({...goals, weekly: e.target.value})}
+                placeholder="e.g. 300"
               />
             </div>
             <Button onClick={handleGoalsUpdate}>Update Goals</Button>
