@@ -15,7 +15,8 @@ export function DashboardHeader() {
     { href: '/', label: 'Dashboard' },
     { href: '/activities', label: 'Activities' },
     { href: '/reports', label: 'Reports' },
-    { href: '#', label: 'Settings' },
+    { href: '/settings', label: 'Settings' },
+    { href: '#', label: 'Community' },
   ];
 
   return (
