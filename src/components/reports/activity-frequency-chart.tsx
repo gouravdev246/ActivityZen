@@ -1,51 +1,63 @@
 "use client"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { PieChart, Pie, Tooltip, ResponsiveContainer, Cell, Legend } from "recharts";
 
-const data = [
-  { name: 'Work', value: 80 },
-  { name: 'Exercise', value: 30 },
-  { name: 'Leisure', value: 50 },
-  { name: 'Learning', value: 25 },
-  { name: 'Social', value: 90 },
-];
+interface TaskStatusChartProps {
+  data: {
+    name: string; // status
+    value: number; // count
+  }[];
+}
 
-export function ActivityFrequencyChart() {
+const COLORS: { [key: string]: string } = {
+  "To Do": "hsl(var(--chart-4))",
+  "In Progress": "hsl(var(--chart-5))",
+  "Done": "hsl(var(--chart-2))",
+};
+
+export function ActivityFrequencyChart({ data }: TaskStatusChartProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base font-medium text-muted-foreground">Frequency of Activities</CardTitle>
-        <div className="flex items-baseline gap-2">
-            <p className="text-3xl font-bold">150</p>
-            <p className="text-sm text-green-500 font-semibold">+15%</p>
-        </div>
-        <p className="text-xs text-muted-foreground">Last 30 Days</p>
+        <CardTitle>Task Status Distribution</CardTitle>
+        <CardDescription>A breakdown of tasks by their current status.</CardDescription>
       </CardHeader>
       <CardContent className="h-80">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart layout="vertical" data={data} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
-            <XAxis type="number" hide />
-            <YAxis 
-                type="category" 
-                dataKey="name" 
-                axisLine={false} 
-                tickLine={false} 
-                style={{ fontSize: '12px' }}
-                width={60}
-            />
-            <Tooltip 
-              cursor={{fill: 'hsl(var(--muted))'}}
-              contentStyle={{ 
-                backgroundColor: 'hsl(var(--background))', 
-                border: '1px solid hsl(var(--border))', 
-                borderRadius: 'var(--radius)',
-                fontSize: '12px',
-                padding: '4px 8px'
-              }}
-              labelClassName="font-bold"
-            />
-            <Bar dataKey="value" fill="hsl(var(--primary))" fillOpacity={0.2} radius={[0, 4, 4, 0]} barSize={12} />
-          </BarChart>
+          {data.length > 0 && data.some(d => d.value > 0) ? (
+            <PieChart>
+              <Pie
+                data={data}
+                cx="50%"
+                cy="50%"
+                labelLine={false}
+                outerRadius={80}
+                fill="#8884d8"
+                dataKey="value"
+                nameKey="name"
+                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                 stroke="hsl(var(--border))"
+              >
+                {data.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[entry.name] || 'hsl(var(--muted))'} />
+                ))}
+              </Pie>
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'hsl(var(--background))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: 'var(--radius)',
+                  fontSize: '12px',
+                  padding: '4px 8px'
+                }}
+              />
+              <Legend wrapperStyle={{fontSize: "14px"}} />
+            </PieChart>
+          ) : (
+            <div className="flex items-center justify-center h-full text-muted-foreground">
+              No tasks to display.
+            </div>
+          )}
         </ResponsiveContainer>
       </CardContent>
     </Card>
