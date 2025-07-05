@@ -22,7 +22,7 @@ const FormSchema = z.object({
   title: z.string().min(2, { message: 'Title must be at least 2 characters.' }),
   description: z.string().optional(),
   status: z.enum(taskStatuses),
-  category: z.string().min(1, { message: 'Please select or enter a category.' }),
+  category: z.string().min(1, { message: 'Please select a category.' }),
   dueDate: z.date().nullable(),
 });
 
@@ -138,7 +138,7 @@ export default function TaskForm({ onSubmit, taskToEdit, categories }: TaskFormP
               <FormItem>
                 <FormLabel>Category</FormLabel>
                 <div className="flex gap-2">
-                  <Select onValueChange={field.onChange} value={field.value} required>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select a category" />
@@ -169,7 +169,7 @@ export default function TaskForm({ onSubmit, taskToEdit, categories }: TaskFormP
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Select a status" />
-                    </Trigger>
+                    </SelectTrigger>
                   </FormControl>
                   <SelectContent>
                     {taskStatuses.map(status => (

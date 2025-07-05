@@ -71,7 +71,7 @@ export default function ActivityZenPage() {
             case 'dueDate_asc':
                 if (!a.dueDate) return 1;
                 if (!b.dueDate) return -1;
-                return new Date(a.dueDate).getTime() - new Date(a.dueDate).getTime();
+                return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
             case 'dueDate_desc':
                 if (!a.dueDate) return 1;
                 if (!b.dueDate) return -1;
