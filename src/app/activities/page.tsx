@@ -26,7 +26,7 @@ export default function ActivityLogPage() {
       <DashboardHeader />
       <main className="flex-1 p-4 sm:px-6 sm:py-0 md:p-8">
         <div className="flex items-center justify-between my-6">
-          <h1 className="text-3xl font-bold">Activity Log</h1>
+          <h1 className="text-3xl font-bold">Activities</h1>
           <Button>Add Activity</Button>
         </div>
         <Card>

@@ -13,13 +13,13 @@ export function DashboardHeader() {
   
   const navLinks = [
     { href: '/', label: 'Dashboard' },
-    { href: '/calendar', label: 'Calendar' },
-    { href: '/activities', label: 'Reports' },
+    { href: '/activities', label: 'Activities' },
+    { href: '/reports', label: 'Reports' },
     { href: '#', label: 'Settings' },
   ];
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b bg-background">
+    <header className="sticky top-0 z-40 w-full border-b bg-card">
       <div className="container flex h-16 items-center">
         <div className="mr-6 flex items-center">
           <Logo className="h-6 w-6 mr-2" />
