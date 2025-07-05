@@ -6,8 +6,6 @@ import { useRouter } from 'next/navigation';
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  signInWithPopup,
-  GoogleAuthProvider,
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useAuth } from '@/context/auth-provider';
@@ -45,17 +43,6 @@ export default function LoginPage() {
       router.push('/');
     } catch (err: any) {
       toast({ variant: 'destructive', title: "Authentication Error", description: err.message });
-    }
-  };
-  
-  const handleGoogleSignIn = async () => {
-    try {
-      const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-      toast({ title: "Signed In!", description: "Welcome." });
-      router.push('/');
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: "Google Sign-In Error", description: err.message });
     }
   };
   
@@ -111,19 +98,6 @@ export default function LoginPage() {
               </Button>
             </div>
           </form>
-          <div className="relative my-4">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
-                Or continue with
-              </span>
-            </div>
-          </div>
-          <Button variant="outline" className="w-full" onClick={handleGoogleSignIn}>
-            Sign in with Google
-          </Button>
           <div className="mt-4 text-center text-sm">
             {isSigningUp ? 'Already have an account?' : "Don't have an account?"}{' '}
             <Button variant="link" className="p-0 h-auto" onClick={() => setIsSigningUp(!isSigningUp)}>
