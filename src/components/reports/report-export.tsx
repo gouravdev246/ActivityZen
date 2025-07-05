@@ -141,7 +141,7 @@ export function ReportExport({ reportData, reportType, dateRange }: ReportExport
                 startY: yPos,
                 headStyles: { fillColor: [3, 105, 161] } // primary color
             });
-            yPos = (doc as any).lastAutoTable.finalY + 10;
+            yPos = doc.lastAutoTable.finalY + 10;
         }
 
         const hasTimeData = showActivities && reportData.timeAllocationData.length > 0;
@@ -155,7 +155,7 @@ export function ReportExport({ reportData, reportType, dateRange }: ReportExport
                 startY: yPos,
                 headStyles: { fillColor: [3, 105, 161] }
             });
-             yPos = (doc as any).lastAutoTable.finalY + 10;
+             yPos = doc.lastAutoTable.finalY + 10;
         } 
         
         if (hasStatusData) {
@@ -166,7 +166,7 @@ export function ReportExport({ reportData, reportType, dateRange }: ReportExport
                 startY: yPos,
                 headStyles: { fillColor: [3, 105, 161] }
             });
-             yPos = (doc as any).lastAutoTable.finalY + 10;
+             yPos = doc.lastAutoTable.finalY + 10;
         }
 
 
