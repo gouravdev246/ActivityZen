@@ -1,20 +1,49 @@
 'use client';
 
+import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { ChevronRight, Image as ImageIcon } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import Link from "next/link";
+import { useToast } from "@/hooks/use-toast";
+import { Toaster } from "@/components/ui/toaster";
 
-export default function SettingsClientPage() {
+export default function ProfilePageClient() {
+  const { toast } = useToast();
+
+  const [accountInfo, setAccountInfo] = useState({
+    name: "Alex Doe",
+    email: "alex.doe@example.com",
+  });
+  const [theme, setTheme] = useState("system");
+  const [notifications, setNotifications] = useState(true);
+  const [goals, setGoals] = useState({
+    daily: "60",
+    weekly: "300",
+  });
+
+  const handleAccountUpdate = () => {
+    toast({ title: "Account Updated", description: "Your account information has been saved." });
+  };
+  
+  const handlePreferencesSave = () => {
+    toast({ title: "Preferences Saved", description: "Your app preferences have been saved." });
+  };
+  
+  const handleGoalsUpdate = () => {
+    toast({ title: "Goals Updated", description: "Your activity goals have been updated." });
+  };
+
   return (
+    <>
     <main className="flex-1 container mx-auto p-4 sm:p-6 md:p-8">
       <div className="mb-8 max-w-3xl mx-auto">
-        <h1 className="text-3xl font-bold">Settings</h1>
-        <p className="text-muted-foreground">Manage your account and app preferences</p>
+        <h1 className="text-3xl font-bold">Profile</h1>
+        <p className="text-muted-foreground">Manage your profile, account, and app preferences</p>
       </div>
 
       <div className="grid gap-8 max-w-3xl mx-auto">
@@ -25,22 +54,29 @@ export default function SettingsClientPage() {
           <CardContent className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="name">Name</Label>
-              <Input id="name" placeholder="Your Name" />
+              <Input 
+                id="name" 
+                value={accountInfo.name}
+                onChange={(e) => setAccountInfo({...accountInfo, name: e.target.value})}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="your.email@example.com" />
+              <Input 
+                id="email" 
+                type="email" 
+                value={accountInfo.email}
+                onChange={(e) => setAccountInfo({...accountInfo, email: e.target.value})}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="profile-picture">Profile Picture</Label>
-              <div className="relative flex items-center">
-                <Input id="profile-picture" readOnly />
-                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                  <ImageIcon className="h-5 w-5 text-muted-foreground" />
-                </div>
+              <div className="flex items-center gap-4">
+                 <img src="https://i.pravatar.cc/64" alt="User avatar" data-ai-hint="person" className="h-16 w-16 rounded-full"/>
+                 <Button variant="outline">Change Picture</Button>
               </div>
             </div>
-            <Button>Update Account</Button>
+            <Button onClick={handleAccountUpdate}>Update Account</Button>
           </CardContent>
         </Card>
 
@@ -50,21 +86,8 @@ export default function SettingsClientPage() {
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="default-activity">Default Activity Type</Label>
-              <Select>
-                <SelectTrigger id="default-activity">
-                  <SelectValue placeholder="Select a type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="work">Work</SelectItem>
-                  <SelectItem value="personal">Personal</SelectItem>
-                  <SelectItem value="fitness">Fitness</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
               <Label htmlFor="theme">Theme</Label>
-              <Select>
+              <Select value={theme} onValueChange={setTheme}>
                 <SelectTrigger id="theme">
                   <SelectValue placeholder="Select a theme" />
                 </SelectTrigger>
@@ -75,19 +98,6 @@ export default function SettingsClientPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="timezone">Time Zone</Label>
-              <Select>
-                <SelectTrigger id="timezone">
-                  <SelectValue placeholder="Select a time zone" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="gmt-8">GMT-8 (PST)</SelectItem>
-                  <SelectItem value="gmt-5">GMT-5 (EST)</SelectItem>
-                  <SelectItem value="gmt">GMT</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
             <div className="flex items-center justify-between rounded-lg border p-4">
               <div>
                 <Label htmlFor="notifications" className="font-medium">Notifications</Label>
@@ -95,9 +105,13 @@ export default function SettingsClientPage() {
                   Enable or disable notifications for activity reminders and updates.
                 </p>
               </div>
-              <Switch id="notifications" />
+              <Switch 
+                id="notifications" 
+                checked={notifications}
+                onCheckedChange={setNotifications}
+              />
             </div>
-            <Button>Save Preferences</Button>
+            <Button onClick={handlePreferencesSave}>Save Preferences</Button>
           </CardContent>
         </Card>
 
@@ -108,13 +122,23 @@ export default function SettingsClientPage() {
           <CardContent className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="daily-target">Daily Activity Target (minutes)</Label>
-              <Input id="daily-target" type="number" placeholder="60" />
+              <Input 
+                id="daily-target" 
+                type="number" 
+                value={goals.daily}
+                onChange={(e) => setGoals({...goals, daily: e.target.value})}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="weekly-target">Weekly Activity Target (minutes)</Label>
-              <Input id="weekly-target" type="number" placeholder="300" />
+              <Input 
+                id="weekly-target" 
+                type="number" 
+                value={goals.weekly}
+                onChange={(e) => setGoals({...goals, weekly: e.target.value})}
+              />
             </div>
-            <Button>Update Goals</Button>
+            <Button onClick={handleGoalsUpdate}>Update Goals</Button>
           </CardContent>
         </Card>
 
@@ -136,5 +160,7 @@ export default function SettingsClientPage() {
         </Card>
       </div>
     </main>
+    <Toaster />
+    </>
   );
 }
