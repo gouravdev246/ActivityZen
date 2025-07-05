@@ -13,7 +13,7 @@ export function DashboardHeader() {
   
   const navLinks = [
     { href: '/', label: 'Dashboard' },
-    { href: '/activity-zen', label: 'Activity Zen' },
+    { href: '/tasks', label: 'Task Manager' },
     { href: '/activities', label: 'Activities' },
     { href: '/calendar', label: 'Calendar' },
     { href: '/reports', label: 'Reports' },
