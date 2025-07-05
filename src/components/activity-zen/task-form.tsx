@@ -13,7 +13,7 @@ import { type Task } from '@/lib/types';
 import { getCategorySuggestion } from '@/app/actions';
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { format } from 'date-fns';
+import { isValid } from 'date-fns';
 
 const FormSchema = z.object({
   title: z.string().min(2, { message: 'Title must be at least 2 characters.' }),
@@ -38,7 +38,7 @@ type TaskFormProps = {
 };
 
 const toDateTimeLocal = (date: Date | null | undefined) => {
-  if (!date) return '';
+  if (!date || !isValid(date)) return '';
   // Adjust for timezone offset
   const tzOffset = date.getTimezoneOffset() * 60000;
   const localDate = new Date(date.getTime() - tzOffset);

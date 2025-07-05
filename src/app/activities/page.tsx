@@ -36,14 +36,13 @@ export default function ActivityLogPage() {
     try {
       const storedTasks = localStorage.getItem(STORAGE_KEY);
       if (storedTasks) {
-        const rawTasks = JSON.parse(storedTasks);
-        const parsedTasks: Task[] = Array.isArray(rawTasks) ? rawTasks.map((task: any) => ({
-          ...task,
-          startTime: new Date(task.startTime),
-          endTime: task.endTime ? new Date(task.endTime) : null,
-          createdAt: new Date(task.createdAt),
-        })) : [];
-        setTasks(parsedTasks);
+        const parsedTasks = JSON.parse(storedTasks, (key, value) => {
+            if ((key === 'startTime' || key === 'endTime' || key === 'createdAt') && value) {
+              return new Date(value);
+            }
+            return value;
+        });
+        setTasks(Array.isArray(parsedTasks) ? parsedTasks : []);
       }
     } catch (error) {
       console.error("Failed to load tasks from localStorage", error);
