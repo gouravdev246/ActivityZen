@@ -2,7 +2,6 @@ export interface Activity {
   id: string;
   title: string;
   description?: string;
-  category: string;
   startTime: Date;
   endTime: Date | null;
   createdAt: Date;

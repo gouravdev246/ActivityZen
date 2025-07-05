@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -24,7 +23,6 @@ export default function ActivityZenPage() {
   const [activityToEdit, setActivityToEdit] = useState<Activity | null>(null);
   const [activityToDelete, setActivityToDelete] = useState<string | null>(null);
 
-  const [categoryFilter, setCategoryFilter] = useState('all');
   const [sortOption, setSortOption] = useState<SortOption>('startTime_desc');
 
   const { toast } = useToast();
@@ -59,19 +57,12 @@ export default function ActivityZenPage() {
     }
   }, [activities, isLoading]);
 
-  const categories = useMemo(() => ['all', ...Array.from(new Set(activities.map(t => t.category).filter(Boolean)))], [activities]);
-
-  const filteredAndSortedActivities = useMemo(() => {
-    let filtered = activities;
-    if (categoryFilter !== 'all') {
-      filtered = filtered.filter(activity => activity.category === categoryFilter);
-    }
-    
-    return [...filtered].sort((a, b) => {
-        const dateA = isValid(a.startTime) ? a.startTime.getTime() : 0;
-        const dateB = isValid(b.startTime) ? b.startTime.getTime() : 0;
-        const createdA = isValid(a.createdAt) ? a.createdAt.getTime() : 0;
-        const createdB = isValid(b.createdAt) ? b.createdAt.getTime() : 0;
+  const sortedActivities = useMemo(() => {
+    return [...activities].sort((a, b) => {
+        const dateA = a.startTime && isValid(a.startTime) ? a.startTime.getTime() : 0;
+        const dateB = b.startTime && isValid(b.startTime) ? b.startTime.getTime() : 0;
+        const createdA = a.createdAt && isValid(a.createdAt) ? a.createdAt.getTime() : 0;
+        const createdB = b.createdAt && isValid(b.createdAt) ? b.createdAt.getTime() : 0;
 
         switch (sortOption) {
             case 'startTime_asc':
@@ -86,8 +77,7 @@ export default function ActivityZenPage() {
                  return createdB - createdA;
         }
     });
-
-  }, [activities, categoryFilter, sortOption]);
+  }, [activities, sortOption]);
 
   const handleActivitySubmit = (activityData: Omit<Activity, 'id' | 'createdAt'> | Activity) => {
     if ('id' in activityData && activityData.id) {
@@ -153,23 +143,19 @@ export default function ActivityZenPage() {
                         <TaskForm 
                             onSubmit={handleActivitySubmit} 
                             activityToEdit={activityToEdit} 
-                            categories={categories.filter(c => c !== 'all')} 
                         />
                     </DialogContent>
                 </Dialog>
             </div>
 
             <TaskFilters
-              categoryFilter={categoryFilter}
-              setCategoryFilter={setCategoryFilter}
-              categories={categories}
               sortOption={sortOption}
               setSortOption={setSortOption}
             />
             
-            {filteredAndSortedActivities.length > 0 ? (
+            {sortedActivities.length > 0 ? (
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-                    {filteredAndSortedActivities.map(activity => (
+                    {sortedActivities.map(activity => (
                         <TaskCard 
                             key={activity.id} 
                             activity={activity} 
@@ -196,8 +182,7 @@ export default function ActivityZenPage() {
                             </DialogHeader>
                             <TaskForm 
                                 onSubmit={handleActivitySubmit} 
-                                activityToEdit={activityToEdit} 
-                                categories={categories.filter(c => c !== 'all')} 
+                                activityToEdit={activityToEdit}
                             />
                         </DialogContent>
                     </Dialog>

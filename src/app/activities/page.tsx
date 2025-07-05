@@ -4,11 +4,10 @@ import { useState, useEffect, useMemo } from 'react';
 import { DashboardHeader } from "@/components/dashboard/header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Pagination } from "@/components/ui/pagination";
-import { ChevronDown, Search, PlusCircle, ListX } from "lucide-react";
+import { Search, PlusCircle, ListX } from "lucide-react";
 import { type Activity } from '@/lib/types';
 import { format, formatDistanceStrict, isValid } from 'date-fns';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -28,7 +27,6 @@ export default function ActivityLogPage() {
   const [activityToDelete, setActivityToDelete] = useState<string | null>(null);
   
   const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('all');
 
   const { toast } = useToast();
 
@@ -62,24 +60,20 @@ export default function ActivityLogPage() {
     }
   }, [activities, isLoading]);
 
-  const categories = useMemo(() => ['all', ...Array.from(new Set(activities.map(t => t.category).filter(Boolean)))], [activities]);
-  
   const filteredActivities = useMemo(() => {
     return activities
       .filter(activity => {
-        const searchMatch = searchTerm.length > 0 
+        return searchTerm.length > 0 
           ? activity.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
             activity.description?.toLowerCase().includes(searchTerm.toLowerCase())
           : true;
-        const categoryMatch = categoryFilter === 'all' || activity.category === categoryFilter;
-        return searchMatch && categoryMatch;
       })
       .sort((a, b) => {
           const dateA = a.createdAt instanceof Date && isValid(a.createdAt) ? a.createdAt.getTime() : 0;
           const dateB = b.createdAt instanceof Date && isValid(b.createdAt) ? b.createdAt.getTime() : 0;
           return dateB - dateA;
       });
-  }, [activities, searchTerm, categoryFilter]);
+  }, [activities, searchTerm]);
 
   const handleActivitySubmit = (activityData: Omit<Activity, 'id' | 'createdAt'> | Activity) => {
     if ('id' in activityData && activityData.id) {
@@ -142,7 +136,6 @@ export default function ActivityLogPage() {
                   <TaskForm 
                       onSubmit={handleActivitySubmit} 
                       activityToEdit={activityToEdit} 
-                      categories={categories.filter(c => c !== 'all')} 
                   />
               </DialogContent>
           </Dialog>
@@ -154,20 +147,6 @@ export default function ActivityLogPage() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input placeholder="Search activities..." className="pl-10" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
               </div>
-              <div className="flex items-center gap-2 ml-auto">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="gap-1">Category: {categoryFilter === 'all' ? 'All' : categoryFilter} <ChevronDown className="h-4 w-4" /></Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    {categories.map((cat) => (
-                      <DropdownMenuItem key={cat} onSelect={() => setCategoryFilter(cat)}>
-                        {cat === 'all' ? 'All Categories' : cat}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
             </div>
           </CardHeader>
           <CardContent className="p-0">
@@ -176,7 +155,6 @@ export default function ActivityLogPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Activity</TableHead>
-                    <TableHead>Category</TableHead>
                     <TableHead>Start Time</TableHead>
                     <TableHead>End Time</TableHead>
                     <TableHead>Duration</TableHead>
@@ -187,7 +165,6 @@ export default function ActivityLogPage() {
                   {filteredActivities.map((activity) => (
                     <TableRow key={activity.id}>
                       <TableCell className="font-medium">{activity.title}</TableCell>
-                      <TableCell className="text-muted-foreground">{activity.category}</TableCell>
                       <TableCell className="text-muted-foreground">
                         {isValid(activity.startTime) ? format(activity.startTime, 'MMM d, h:mm a') : 'Invalid Date'}
                       </TableCell>

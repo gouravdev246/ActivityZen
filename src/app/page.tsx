@@ -10,7 +10,7 @@ import { KeyMetricCard } from "@/components/dashboard/key-metric-card";
 import { CustomizePanel } from "@/components/dashboard/customize-panel";
 import { type Activity } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
-import { subDays, eachDayOfInterval, format, startOfWeek, endOfWeek, subWeeks, isWithinInterval, differenceInMinutes } from 'date-fns';
+import { subDays, eachDayOfInterval, format, startOfWeek, endOfWeek, subWeeks, isWithinInterval, differenceInMinutes, isValid } from 'date-fns';
 
 const STORAGE_KEY = 'activity-zen-activities';
 
@@ -32,11 +32,12 @@ export default function DashboardPage() {
       if (storedActivities) {
         const parsedActivities = JSON.parse(storedActivities, (key, value) => {
             if ((key === 'startTime' || key === 'endTime' || key === 'createdAt') && value) {
-              return new Date(value);
+              const date = new Date(value);
+              return isValid(date) ? date : null;
             }
             return value;
         });
-        setActivities(parsedActivities);
+        setActivities(Array.isArray(parsedActivities) ? parsedActivities : []);
       }
     } catch (error) {
       console.error("Failed to load activities from localStorage", error);
@@ -47,25 +48,14 @@ export default function DashboardPage() {
 
   const stats = useMemo(() => {
     const totalActivities = activities.length;
-    const completedActivities = activities.filter(activity => activity.endTime);
+    const completedActivities = activities.filter(activity => activity.endTime && isValid(activity.startTime) && isValid(activity.endTime));
     
     const totalTimeSpent = completedActivities.reduce((acc, activity) => {
-        if (activity.endTime) {
+        if (activity.endTime) { // This check is redundant due to filter, but safe
             return acc + differenceInMinutes(activity.endTime, activity.startTime);
         }
         return acc;
     }, 0);
-
-    const categoryCounts = activities.reduce((acc, activity) => {
-        if(activity.category) {
-            acc[activity.category] = (acc[activity.category] || 0) + 1;
-        }
-        return acc;
-    }, {} as Record<string, number>);
-
-    const mostFrequentCategory = Object.keys(categoryCounts).length > 0 
-        ? Object.entries(categoryCounts).sort((a, b) => b[1] - a[1])[0][0] 
-        : 'N/A';
         
     const averageTimePerActivity = completedActivities.length > 0 
         ? formatDuration(Math.round(totalTimeSpent / completedActivities.length))
@@ -75,7 +65,6 @@ export default function DashboardPage() {
         totalActivities: totalActivities.toString(),
         timeSpent: totalTimeSpent > 0 ? formatDuration(totalTimeSpent) : "N/A", 
         goalProgress: "N/A",
-        mostFrequentCategory,
         averageTimePerActivity
     };
   }, [activities]);
@@ -83,7 +72,7 @@ export default function DashboardPage() {
   const dailyChartData = useMemo(() => {
     const today = new Date();
     const last7Days = eachDayOfInterval({ start: subDays(today, 6), end: today });
-    const completedActivities = activities.filter(t => t.endTime);
+    const completedActivities = activities.filter(t => t.endTime && isValid(t.endTime));
 
     return last7Days.map(day => {
         const count = completedActivities.filter(t => t.endTime && format(t.endTime, 'yyyy-MM-dd') === format(day, 'yyyy-MM-dd')).length;
@@ -93,7 +82,7 @@ export default function DashboardPage() {
 
   const weeklyChartData = useMemo(() => {
     const today = new Date();
-    const completedActivities = activities.filter(t => t.endTime);
+    const completedActivities = activities.filter(t => t.endTime && isValid(t.endTime));
     
     const weeks = [
         { name: 'Week 1', interval: { start: startOfWeek(subWeeks(today, 3)), end: endOfWeek(subWeeks(today, 3)) } },
@@ -134,7 +123,7 @@ export default function DashboardPage() {
                     <Skeleton className="h-96" />
                 </div>
                 <div className="space-y-6">
-                    <Skeleton className="h-64" />
+                    <Skeleton className="h-40" />
                     <Skeleton className="h-48" />
                 </div>
             </div>
@@ -174,7 +163,6 @@ export default function DashboardPage() {
             <div>
               <h2 className="text-2xl font-bold mb-4">Key Metrics</h2>
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-1">
-                <KeyMetricCard title="Most Frequent Category" value={stats.mostFrequentCategory} />
                 <KeyMetricCard title="Average Time per Activity" value={stats.averageTimePerActivity} />
               </div>
             </div>
