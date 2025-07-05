@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { MoreVertical, Calendar, Edit, Trash2, Clock } from 'lucide-react';
 import { type Task } from '@/lib/types';
-import { format, formatDistanceStrict } from 'date-fns';
+import { format, formatDistanceStrict, isValid } from 'date-fns';
 
 type TaskCardProps = {
   task: Task;
@@ -48,13 +48,13 @@ export default function TaskCard({ task, onEdit, onDelete }: TaskCardProps) {
       <CardFooter className="flex flex-col items-start gap-4 text-sm text-muted-foreground">
         <div className="flex items-center">
           <Calendar className="mr-2 h-4 w-4" />
-          <span>{format(task.startTime, 'MMM d, yyyy')}</span>
+          <span>{isValid(task.startTime) ? format(task.startTime, 'MMM d, yyyy') : 'Invalid Date'}</span>
         </div>
         <div className="flex items-center">
             <Clock className="mr-2 h-4 w-4" />
            <span>
-            {format(task.startTime, 'h:mm a')} - {task.endTime ? format(task.endTime, 'h:mm a') : 'Now'}
-            {task.endTime && ` (${formatDistanceStrict(task.endTime, task.startTime)})`}
+            {isValid(task.startTime) ? format(task.startTime, 'h:mm a') : 'Invalid Time'} - {task.endTime && isValid(task.endTime) ? format(task.endTime, 'h:mm a') : 'Now'}
+            {task.endTime && isValid(task.endTime) && isValid(task.startTime) && ` (${formatDistanceStrict(task.endTime, task.startTime)})`}
            </span>
         </div>
       </CardFooter>

@@ -13,6 +13,7 @@ import { DashboardHeader } from '@/components/dashboard/header';
 import { type Task, type SortOption } from '@/lib/types';
 import { Toaster } from '@/components/ui/toaster';
 import { useToast } from '@/hooks/use-toast';
+import { isValid } from 'date-fns';
 
 const STORAGE_KEY = 'activity-zen-tasks';
 
@@ -38,7 +39,7 @@ export default function ActivityZenPage() {
             }
             return value;
         });
-        setTasks(parsedTasks);
+        setTasks(Array.isArray(parsedTasks) ? parsedTasks : []);
       }
     } catch (error) {
       console.error("Failed to load tasks from localStorage", error);
@@ -66,23 +67,22 @@ export default function ActivityZenPage() {
     }
     
     return [...filtered].sort((a, b) => {
-        // Defensively create Date objects to prevent errors from invalid data
-        const dateA = a.startTime instanceof Date ? a.startTime : new Date(a.startTime);
-        const dateB = b.startTime instanceof Date ? b.startTime : new Date(b.startTime);
-        const createdA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
-        const createdB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
+        const dateA = isValid(a.startTime) ? a.startTime.getTime() : 0;
+        const dateB = isValid(b.startTime) ? b.startTime.getTime() : 0;
+        const createdA = isValid(a.createdAt) ? a.createdAt.getTime() : 0;
+        const createdB = isValid(b.createdAt) ? b.createdAt.getTime() : 0;
 
         switch (sortOption) {
             case 'startTime_asc':
-                return dateA.getTime() - dateB.getTime();
+                return dateA - dateB;
             case 'startTime_desc':
-                return dateB.getTime() - dateA.getTime();
+                return dateB - dateA;
             case 'title_asc':
                 return a.title.localeCompare(b.title);
             case 'title_desc':
                 return b.title.localeCompare(a.title);
             default:
-                 return createdB.getTime() - createdA.getTime();
+                 return createdB - createdA;
         }
     });
 
