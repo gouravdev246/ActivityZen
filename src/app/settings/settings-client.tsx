@@ -17,6 +17,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
+import { parseISO } from 'date-fns';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -104,7 +105,7 @@ export default function ProfilePageClient() {
   const handleAccountUpdate = async () => {
     if (!user) return;
     try {
-        await updateProfile(user, { displayName: accountInfo.name, photoURL: user.photoURL });
+        await updateProfile(user, { displayName: accountInfo.name });
         const settingsDocRef = doc(db, 'settings', user.uid);
         await setDoc(settingsDocRef, { accountInfo: { name: accountInfo.name } }, { merge: true });
         toast({ title: "Account Updated", description: "Your account information has been saved." });
@@ -144,10 +145,27 @@ export default function ProfilePageClient() {
       const activitiesData = localStorage.getItem('activity-zen-activities');
       const tasksData = localStorage.getItem('task-manager-tasks');
       
+      const activitiesToSync = activitiesData 
+        ? JSON.parse(activitiesData).map((activity: any) => ({
+            ...activity,
+            startTime: activity.startTime ? parseISO(activity.startTime) : new Date(),
+            endTime: activity.endTime ? parseISO(activity.endTime) : null,
+            createdAt: activity.createdAt ? parseISO(activity.createdAt) : new Date(),
+          })) 
+        : [];
+
+      const tasksToSync = tasksData 
+        ? JSON.parse(tasksData).map((task: any) => ({
+            ...task,
+            dueDate: task.dueDate ? parseISO(task.dueDate) : null,
+            createdAt: task.createdAt ? parseISO(task.createdAt) : new Date(),
+          })) 
+        : [];
+
       const dataToSync = {
-        activities: activitiesData ? JSON.parse(activitiesData) : [],
-        tasks: tasksData ? JSON.parse(tasksData) : [],
-        syncedAt: new Date().toISOString(),
+        activities: activitiesToSync,
+        tasks: tasksToSync,
+        syncedAt: new Date(),
       };
 
       const dataDocRef = doc(db, 'userData', user.uid);
@@ -169,10 +187,25 @@ export default function ProfilePageClient() {
       if (docSnap.exists()) {
         const cloudData = docSnap.data();
         if (cloudData.activities) {
-          localStorage.setItem('activity-zen-activities', JSON.stringify(cloudData.activities));
+          const activitiesFromCloud = cloudData.activities.map((activity: any) => {
+            return {
+              ...activity,
+              startTime: activity.startTime?.toDate ? activity.startTime.toDate().toISOString() : activity.startTime,
+              endTime: activity.endTime?.toDate ? activity.endTime.toDate().toISOString() : activity.endTime,
+              createdAt: activity.createdAt?.toDate ? activity.createdAt.toDate().toISOString() : activity.createdAt,
+            }
+          });
+          localStorage.setItem('activity-zen-activities', JSON.stringify(activitiesFromCloud));
         }
         if (cloudData.tasks) {
-          localStorage.setItem('task-manager-tasks', JSON.stringify(cloudData.tasks));
+           const tasksFromCloud = cloudData.tasks.map((task: any) => {
+             return {
+              ...task,
+              dueDate: task.dueDate?.toDate ? task.dueDate.toDate().toISOString() : task.dueDate,
+              createdAt: task.createdAt?.toDate ? task.createdAt.toDate().toISOString() : task.createdAt,
+            }
+          });
+          localStorage.setItem('task-manager-tasks', JSON.stringify(tasksFromCloud));
         }
         toast({ title: "Data Loaded", description: "Your data has been loaded from the cloud. The page will now reload." });
         setTimeout(() => window.location.reload(), 2000);
